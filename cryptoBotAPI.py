@@ -53,7 +53,7 @@ class Stock:
 def image1(): 
     try:
         stocks = []
-        with open("crypto.txt", "rb") as filehandler:
+        with open("./crypto.txt", "rb") as filehandler:
             stocks = pickle.load(filehandler)
         
         coin = json.loads(request.data)
@@ -99,7 +99,7 @@ def image2():
     
     try:
         stocks = []
-        with open("crypto.txt", "rb") as filehandler:
+        with open("./crypto.txt", "rb") as filehandler:
             stocks = pickle.load(filehandler)
 
         coin = json.loads(request.data)
@@ -332,7 +332,7 @@ async def train():
 if __name__ == '__main__':
 
     try:
-        with open("crypto.txt", "rb") as filehandler:
+        with open("./crypto.txt", "rb") as filehandler:
             stocks = pickle.load(filehandler)
             for stock in stocks:
                 while len(stock.prices) > dataPoints:
@@ -358,7 +358,7 @@ if __name__ == '__main__':
                 while len(stock.prices) > dataPoints:
                     stock.prices.pop(0)
                     
-        with open("crypto.txt", "wb") as filehandler:
+        with open("./crypto.txt", "wb") as filehandler:
             pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
     t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
