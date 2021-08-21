@@ -21,9 +21,12 @@ from binance.enums import *
 import time as t
 import json
 import traceback
+from flask_sqlalchemy import SQLAlchemy
+from io import BytesIO
 
 APIKEY = os.getenv('APIKEY')
 APISECRET = os.getenv('APISECRET')
+URI = os.getenv('CLEARDB_DATABASE_URL')
 
 # physical_devices = tf.config.list_physical_devices("GPU")
 # tf.config.experimental.set_memory_growth(physical_devices[0], False)
@@ -33,6 +36,16 @@ client = Client(APIKEY, APISECRET)
 
 #Create flask app
 app = Flask(__name__)
+app.config["SQLALCHEMY_DATABASE_URI"] = URI
+db = SQLAlchemy(app)
+# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
+
+
+#File model
+class heroku_09b1d816545b700(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    data = db.Column(db.LargeBinary)
 
 #Stock Object
 class Stock:
@@ -86,7 +99,7 @@ def image1():
         plt.title(str(coin).upper() + ' Price and Previous Predictions')
         plt.savefig(fname='plot', transparent=True)
         plt.clf()
-        return send_file('../plot.png')
+        return send_file('plot.png')
     
     except:
         traceback.print_exc()
@@ -131,7 +144,7 @@ def image2():
         plt.title(str(coin).upper() + ' Future Prediction')
         plt.savefig(fname='plot', transparent=True)
         plt.clf()
-        return send_file('../plot.png')
+        return send_file('plot.png')
     
     except:
         traceback.print_exc()
@@ -178,8 +191,14 @@ async def collectData():
             
             #Write information into file
             #os.remove("crypto.txt")
-            with open("./crypto.txt", "wb") as filehandler:
+            with open("crypto.txt", "wb") as filehandler:
                 pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
+
+                #Delete file in database and replace with new one
+                file = heroku_09b1d816545b700().query.filter_by(name='crypto.txt').first().delete()
+                file = heroku_09b1d816545b700(name="crypto.txt", data=filehandler.read())
+                db.session.add(file)
+                db.session.commit()
 
             end = t.time()                              
             newRefresh = round(refreshRate - (end - start))
@@ -265,6 +284,11 @@ async def train():
                 x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
                     
                 try:
+                    #Create file from database
+                    with open("model.h5", "w") as filehandler:
+                        file = heroku_09b1d816545b700().query.filter_by(name='model.h5').first()
+                        filehandler.write(BytesIO(file.data))
+
                     model = load_model('model.h5')
 
                 except:    
@@ -287,7 +311,13 @@ async def train():
                 model.fit(x_train, y_train, epochs=1000, validation_split=0.2, callbacks=callbacks)
                 # model.fit(x_train, y_train, epochs=1000)
                 model.save('model.h5')
-                
+
+                with open('model.h5', 'r') as filehandler:
+                    file = heroku_09b1d816545b700().query.filter_by(name='model.h5').first().delete()
+                    file = heroku_09b1d816545b700(name="model.h5", data=filehandler.read())
+                    db.session.add(file)
+                    db.session.commit()
+
                 #Get prices to predict data
                 prices = []
                 for i in range(0, 400 - predictAhead):
@@ -326,33 +356,51 @@ async def train():
                 plt.plot(actualPrices, color='white')
                 plt.plot(predictedPrices, color='green')
                 plt.title(str(stock.symbol))
-                plt.savefig("./plots/"+ str(stock.symbol) + ".png", transparent=True)
+                # plt.savefig("./plots/"+ str(stock.symbol) + ".png", transparent=True)
                 plt.clf()
 
 if __name__ == '__main__':
 
-    for ticker in tickers:
-        if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
-            stocks.append(Stock(ticker['symbol']))
-            num = num + 1
+    try:
+        #Create file from database
+        with open("crypto.txt", "wb") as filehandler:
+            file = heroku_09b1d816545b700().query.filter_by(name='crypto.txt').first()
+            filehandler.write(BytesIO(file.data))
         
-        if num == numCoins:
-            break
+        #Create text file that reads new file
+        with open("crypto.txt", 'rb') as filehandler:
+            stocks = pickle.load(filehandler)
+            for stock in stocks:
+                while len(stock.prices) > dataPoints:
+                    stock.prices.pop(0)
 
-    for stock in stocks:
-        if len(stock.prices) < dataPoints:
-            candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
+    except:          
+        num = 0
+        for ticker in tickers:
+            if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
+                stocks.append(Stock(ticker['symbol']))
+                num = num + 1
             
-            for candle in candles:
-                stock.prices.append(float(candle[3]))
+            if num == numCoins:
+                break
 
-            while len(stock.prices) > dataPoints:
-                stock.prices.pop(0)
+        for stock in stocks:
+            if len(stock.prices) < dataPoints:
+                candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
                 
-    with open("crypto.txt", "wb") as filehandler:
-        pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
+                for candle in candles:
+                    stock.prices.append(float(candle[3]))
 
-    print('--------------------------------------------------------------------------start testing')
+                while len(stock.prices) > dataPoints:
+                    stock.prices.pop(0)
+
+        with open("crypto.txt", "wb") as filehandler:
+            pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
+
+            #Write file into database
+            file = heroku_09b1d816545b700(name="crypto.txt", data=filehandler.read())
+            db.session.add(file)
+            db.session.commit()
 
     t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
     t1.setDaemon(True)
