@@ -1,6 +1,5 @@
 keras_nightly==2.5.0.dev2021032900
 Flask_Cors==3.0.10
-tensorflow_gpu==2.5.0
 matplotlib==3.4.2
 python_binance==0.7.11
 numpy==1.19.5
@@ -8,4 +7,4 @@ Flask==1.1.2
 binance==0.3
 keras==2.6.0
 scikit_learn==0.24.2
-tensorflow==2.6.0
+tensorflow-cpu==2.6.0
