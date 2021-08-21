@@ -42,7 +42,7 @@ db = SQLAlchemy(app)
 
 
 #File model
-class heroku_09b1d816545b700(db.Model):
+class heroku_66712efabd4ea66(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     data = db.Column(db.LargeBinary)
@@ -68,7 +68,7 @@ def image1():
         stocks = []
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            file = heroku_09b1d816545b700().query.filter_by(name='crypto.txt').first()
+            file = heroku_66712efabd4ea66().query.filter_by(name='crypto.txt').first()
             filehandler.write(BytesIO(file.data))
         
         #Create text file that reads new file
@@ -123,7 +123,7 @@ def image2():
         stocks = []
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            file = heroku_09b1d816545b700().query.filter_by(name='crypto.txt').first()
+            file = heroku_66712efabd4ea66().query.filter_by(name='crypto.txt').first()
             filehandler.write(BytesIO(file.data))
         
         #Create text file that reads new file
@@ -213,8 +213,8 @@ async def collectData():
                 pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
                 #Delete file in database and replace with new one
-                file = heroku_09b1d816545b700().query.filter_by(name='crypto.txt').first().delete()
-                file = heroku_09b1d816545b700(name="crypto.txt", data=filehandler.read())
+                file = heroku_66712efabd4ea66().query.filter_by(name='crypto.txt').first().delete()
+                file = heroku_66712efabd4ea66(name="crypto.txt", data=filehandler.read())
                 db.session.add(file)
                 db.session.commit()
 
@@ -304,7 +304,7 @@ async def train():
                 try:
                     #Create file from database
                     with open("model.h5", "w") as filehandler:
-                        file = heroku_09b1d816545b700().query.filter_by(name='model.h5').first()
+                        file = heroku_66712efabd4ea66().query.filter_by(name='model.h5').first()
                         filehandler.write(BytesIO(file.data))
 
                     model = load_model('model.h5')
@@ -331,8 +331,8 @@ async def train():
                 model.save('model.h5')
 
                 with open('model.h5', 'r') as filehandler:
-                    file = heroku_09b1d816545b700().query.filter_by(name='model.h5').first().delete()
-                    file = heroku_09b1d816545b700(name="model.h5", data=filehandler.read())
+                    file = heroku_66712efabd4ea66().query.filter_by(name='model.h5').first().delete()
+                    file = heroku_66712efabd4ea66(name="model.h5", data=filehandler.read())
                     db.session.add(file)
                     db.session.commit()
 
@@ -382,7 +382,7 @@ if __name__ == '__main__':
     try:
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            file = heroku_09b1d816545b700().query.filter_by(name='crypto.txt').first()
+            file = heroku_66712efabd4ea66().query.filter_by(name='crypto.txt').first()
             filehandler.write(BytesIO(file.data))
         
         #Create text file that reads new file
@@ -416,7 +416,7 @@ if __name__ == '__main__':
             pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
             #Write file into database
-            file = heroku_09b1d816545b700(name="crypto.txt", data=filehandler.read())
+            file = heroku_66712efabd4ea66(name="crypto.txt", data=filehandler.read())
             db.session.add(file)
             db.session.commit()
 
