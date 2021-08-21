@@ -1,1 +1,1 @@
-web: gunicorn app:cryptoBotAPI
+web: gunicorn cryptoBotAPI:app
