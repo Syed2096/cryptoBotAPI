@@ -66,8 +66,17 @@ class Stock:
 def image1(): 
     try:
         stocks = []
-        with open("crypto.txt", "rb") as filehandler:
+        #Create file from database
+        with open("crypto.txt", "wb") as filehandler:
+            file = heroku_09b1d816545b700().query.filter_by(name='crypto.txt').first()
+            filehandler.write(BytesIO(file.data))
+        
+        #Create text file that reads new file
+        with open("crypto.txt", 'rb') as filehandler:
             stocks = pickle.load(filehandler)
+            for stock in stocks:
+                while len(stock.prices) > dataPoints:
+                    stock.prices.pop(0)
         
         coin = json.loads(request.data)
         coin = coin['coin']
@@ -112,9 +121,18 @@ def image2():
     
     try:
         stocks = []
-        with open("crypto.txt", "rb") as filehandler:
+        #Create file from database
+        with open("crypto.txt", "wb") as filehandler:
+            file = heroku_09b1d816545b700().query.filter_by(name='crypto.txt').first()
+            filehandler.write(BytesIO(file.data))
+        
+        #Create text file that reads new file
+        with open("crypto.txt", 'rb') as filehandler:
             stocks = pickle.load(filehandler)
-
+            for stock in stocks:
+                while len(stock.prices) > dataPoints:
+                    stock.prices.pop(0)
+    
         coin = json.loads(request.data)
         coin = coin['coin']
         prediction = None
