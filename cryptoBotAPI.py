@@ -53,8 +53,6 @@ class Stock:
 def image1(): 
     try:
         stocks = []
-        print('-----------------------------')
-        print(os.getcwd())
         with open("crypto.txt", "rb") as filehandler:
             stocks = pickle.load(filehandler)
         
@@ -180,7 +178,7 @@ async def collectData():
             
             #Write information into file
             #os.remove("crypto.txt")
-            with open("crypto.txt", "wb") as filehandler:
+            with open("./crypto.txt", "wb") as filehandler:
                 pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
             end = t.time()                              
@@ -333,35 +331,28 @@ async def train():
 
 if __name__ == '__main__':
 
-    try:
-        with open("crypto.txt", "rb") as filehandler:
-            stocks = pickle.load(filehandler)
-            for stock in stocks:
-                while len(stock.prices) > dataPoints:
-                    stock.prices.pop(0)
+    for ticker in tickers:
+        if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
+            stocks.append(Stock(ticker['symbol']))
+            num = num + 1
+        
+        if num == numCoins:
+            break
 
-    except:          
-        num = 0
-        for ticker in tickers:
-            if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
-                stocks.append(Stock(ticker['symbol']))
-                num = num + 1
+    for stock in stocks:
+        if len(stock.prices) < dataPoints:
+            candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
             
-            if num == numCoins:
-                break
+            for candle in candles:
+                stock.prices.append(float(candle[3]))
 
-        for stock in stocks:
-            if len(stock.prices) < dataPoints:
-                candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
+            while len(stock.prices) > dataPoints:
+                stock.prices.pop(0)
                 
-                for candle in candles:
-                    stock.prices.append(float(candle[3]))
+    with open("crypto.txt", "wb") as filehandler:
+        pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
-                while len(stock.prices) > dataPoints:
-                    stock.prices.pop(0)
-                    
-        with open("crypto.txt", "wb") as filehandler:
-            pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
+    print('--------------------------------------------------------------------------start testing')
 
     t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
     t1.setDaemon(True)
