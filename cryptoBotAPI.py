@@ -53,7 +53,7 @@ class Stock:
 def image1(): 
     try:
         stocks = []
-        with open("./crypto.txt", "rb") as filehandler:
+        with open("crypto.txt", "rb") as filehandler:
             stocks = pickle.load(filehandler)
         
         coin = json.loads(request.data)
@@ -99,7 +99,7 @@ def image2():
     
     try:
         stocks = []
-        with open("./crypto.txt", "rb") as filehandler:
+        with open("crypto.txt", "rb") as filehandler:
             stocks = pickle.load(filehandler)
 
         coin = json.loads(request.data)
