@@ -68,7 +68,7 @@ def image1():
         stocks = []
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            test = file().query.filter_by(name='crypto.txt').first()
+            test = file.query.filter_by(name='crypto.txt').first()
             filehandler.write(BytesIO(test.data))
         
         #Create text file that reads new file
@@ -123,7 +123,7 @@ def image2():
         stocks = []
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            test = file().query.filter_by(name='crypto.txt').first()
+            test = file.query.filter_by(name='crypto.txt').first()
             filehandler.write(BytesIO(test.data))
         
         #Create text file that reads new file
@@ -213,9 +213,9 @@ async def collectData():
                 pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
                 #Delete file in database and replace with new one
-                test = file().query.filter_by(name='crypto.txt').first().delete()
+                test = file.query.filter_by(name='crypto.txt').first().delete()
                 test = file(name="crypto.txt", data=filehandler.read())
-                db.session.add(file)
+                db.session.add(test)
                 db.session.commit()
 
             end = t.time()                              
@@ -304,7 +304,7 @@ async def train():
                 try:
                     #Create file from database
                     with open("model.h5", "w") as filehandler:
-                        test = file().query.filter_by(name='model.h5').first()
+                        test = file.query.filter_by(name='model.h5').first()
                         filehandler.write(BytesIO(test.data))
 
                     model = load_model('model.h5')
@@ -331,7 +331,7 @@ async def train():
                 model.save('model.h5')
 
                 with open('model.h5', 'r') as filehandler:
-                    test = file().query.filter_by(name='model.h5').first().delete()
+                    test = file.query.filter_by(name='model.h5').first().delete()
                     test = file(name="model.h5", data=filehandler.read())
                     db.session.add(test)
                     db.session.commit()
@@ -382,7 +382,7 @@ if __name__ == '__main__':
     try:
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            test = file().query.filter_by(name='crypto.txt').first()
+            test = file.query.filter_by(name='crypto.txt').first()
             filehandler.write(BytesIO(test.data))
         
         #Create text file that reads new file
