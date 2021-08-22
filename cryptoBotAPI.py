@@ -420,47 +420,47 @@ async def train():
 
 if __name__ == '__main__':
     
-    try:
-        #Create file from database
-        with open("crypto.txt", "wb") as filehandler:
-            test = file.query.filter_by(name='crypto.txt').first()
-            filehandler.write(BytesIO(test.data))
+    # try:
+    #     #Create file from database
+    #     with open("crypto.txt", "wb") as filehandler:
+    #         test = file.query.filter_by(name='crypto.txt').first()
+    #         filehandler.write(BytesIO(test.data))
         
-        #Create text file that reads new file
-        with open("crypto.txt", 'rb') as filehandler:
-            stocks = pickle.load(filehandler)
-            for stock in stocks:
-                while len(stock.prices) > dataPoints:
-                    stock.prices.pop(0)
+    #     #Create text file that reads new file
+    #     with open("crypto.txt", 'rb') as filehandler:
+    #         stocks = pickle.load(filehandler)
+    #         for stock in stocks:
+    #             while len(stock.prices) > dataPoints:
+    #                 stock.prices.pop(0)
 
-    except:          
-        num = 0
-        tickers = client.get_all_tickers()
-        for ticker in tickers:
-            if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
-                stocks.append(Stock(ticker['symbol']))
-                num = num + 1
+    # except:          
+    num = 0
+    tickers = client.get_all_tickers()
+    for ticker in tickers:
+        if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
+            stocks.append(Stock(ticker['symbol']))
+            num = num + 1
+        
+        if num == numCoins:
+            break
+
+    for stock in stocks:
+        if len(stock.prices) < dataPoints:
+            candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
             
-            if num == numCoins:
-                break
+            for candle in candles:
+                stock.prices.append(float(candle[3]))
 
-        for stock in stocks:
-            if len(stock.prices) < dataPoints:
-                candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
-                
-                for candle in candles:
-                    stock.prices.append(float(candle[3]))
+            while len(stock.prices) > dataPoints:
+                stock.prices.pop(0)
 
-                while len(stock.prices) > dataPoints:
-                    stock.prices.pop(0)
+    with open("crypto.txt", "wb") as filehandler:
+        pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
-        with open("crypto.txt", "wb") as filehandler:
-            pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
-
-        with open("crypto.txt", "rb") as filehandler:
-            test = file(name="crypto.txt", data=filehandler.read())
-            db.session.add(test)
-            db.session.commit()
+    with open("crypto.txt", "rb") as filehandler:
+        test = file(name="crypto.txt", data=filehandler.read())
+        db.session.add(test)
+        db.session.commit()
 
     t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
     t1.setDaemon(True)
