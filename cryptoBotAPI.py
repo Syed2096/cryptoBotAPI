@@ -42,7 +42,7 @@ db = SQLAlchemy(app)
 
 
 #File model
-class file(db.Model):
+class File(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     data = db.Column(db.LargeBinary(length=(2**32)-1))
@@ -68,10 +68,10 @@ def image1():
         stocks = []
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            test = file.query.filter_by(name='crypto.txt').first()
-            filehandler.write(BytesIO(test.data))
+            test = File.query.filter_by(name='crypto.txt').first()
+            filehandler.write(BytesIO(test.data).read())
         
-        #Create text file that reads new file
+        #Read file
         with open("crypto.txt", 'rb') as filehandler:
             stocks = pickle.load(filehandler)
             for stock in stocks:
@@ -123,8 +123,8 @@ def image2():
         stocks = []
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            test = file.query.filter_by(name='crypto.txt').first()
-            filehandler.write(BytesIO(test.data))
+            test = File.query.filter_by(name='crypto.txt').first()
+            filehandler.write(BytesIO(test.data).read())
         
         #Create text file that reads new file
         with open("crypto.txt", 'rb') as filehandler:
@@ -183,17 +183,6 @@ refreshRate = 300
 #Number of coins you want to track
 numCoins = 100
 
-#Load model
-try:
-    #Create file from database
-    with open("model.h5", "w") as filehandler:
-        test = file.query.filter_by(name='model.h5').first()
-        filehandler.write(BytesIO(test.data))
-    model = load_model('model.h5')
-
-except:
-    print("No Model!")
-
 #Collect data function
 async def collectData():
     await asyncio.sleep(refreshRate)
@@ -203,8 +192,8 @@ async def collectData():
             
             #Create file from database
             with open("crypto.txt", "wb") as filehandler:
-                test = file.query.filter_by(name='crypto.txt').first()
-                filehandler.write(BytesIO(test.data))
+                test = File.query.filter_by(name='crypto.txt').first()
+                filehandler.write(BytesIO(test.data).read())
             
             #Create text file that reads new file
             with open("crypto.txt", 'rb') as filehandler:
@@ -228,8 +217,8 @@ async def collectData():
                 pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
             with open('crypto.txt', 'rb') as filehandler:
-                #Delete file in database and replace with new one
-                test = file.query.filter_by(name='crypto.txt').first()
+                #Update data
+                test = File.query.filter_by(name='crypto.txt').first()
                 test.data = filehandler.read()
                 db.session.commit()
 
@@ -249,8 +238,8 @@ async def predictPrice():
 
             #Create file from database
             with open("crypto.txt", "wb") as filehandler:
-                test = file.query.filter_by(name='crypto.txt').first()
-                filehandler.write(BytesIO(test.data))
+                test = File.query.filter_by(name='crypto.txt').first()
+                filehandler.write(BytesIO(test.data).read())
             
             #Create text file that reads new file
             with open("crypto.txt", 'rb') as filehandler:
@@ -263,6 +252,12 @@ async def predictPrice():
                 K.clear_session()
                 # tf.compat.v1.reset_default_graph()
                 try:
+                    #Create model file from database
+                    with open('model.h5', 'wb') as filehandler:
+                        test = File.query.filter_by(name='model.h5').first()
+                        filehandler.write(BytesIO(test.data).read())
+                    
+                    model = load_model('model.h5')
                     
                     scaler = MinMaxScaler(feature_range=(0, 1))
                     prices = np.array(stock.prices).reshape(-1, 1)
@@ -308,8 +303,8 @@ async def train():
 
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            test = file.query.filter_by(name='crypto.txt').first()
-            filehandler.write(BytesIO(test.data))
+            test = File.query.filter_by(name='crypto.txt').first()
+            filehandler.write(BytesIO(test.data).read())
         
         #Create text file that reads new file
         with open("crypto.txt", 'rb') as filehandler:
@@ -344,9 +339,9 @@ async def train():
                     
                 try:
                     #Create file from database
-                    with open("model.h5", "w") as filehandler:
-                        test = file.query.filter_by(name='model.h5').first()
-                        filehandler.write(BytesIO(test.data))
+                    with open("model.h5", "wb") as filehandler:
+                        test = File.query.filter_by(name='model.h5').first()
+                        filehandler.write(BytesIO(test.data).read())
 
                     model = load_model('model.h5')
 
@@ -371,10 +366,9 @@ async def train():
                 # model.fit(x_train, y_train, epochs=1000)
                 model.save('model.h5')
 
-                with open('model.h5', 'r') as filehandler:
-                    file.query.filter_by(name='model.h5').first().delete()
-                    test = file(name="model.h5", data=filehandler.read())
-                    db.session.add(test)
+                with open('model.h5', 'rb') as filehandler:
+                    test = File.query.filter_by(name='model.h5').first()
+                    test.data = filehandler.read()
                     db.session.commit()
 
                 #Get prices to predict data
@@ -458,7 +452,7 @@ if __name__ == '__main__':
         pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
     with open("crypto.txt", "rb") as filehandler:
-        test = file(name="crypto.txt", data=filehandler.read())
+        test = File(name="crypto.txt", data=filehandler.read())
         db.session.add(test)
         db.session.commit()
 
