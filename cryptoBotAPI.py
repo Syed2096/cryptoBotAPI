@@ -45,7 +45,7 @@ db = SQLAlchemy(app)
 class file(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
-    data = db.Column(db.LargeBlob(length=(2**32)-1))
+    data = db.Column(db.LargeBinary(length=(2**32)-1))
 
 #Stock Object
 class Stock:
