@@ -42,7 +42,7 @@ db = SQLAlchemy(app)
 
 
 #File model
-class File(db.Model):
+class file(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     data = db.Column(db.LargeBinary)
@@ -68,8 +68,8 @@ def image1():
         stocks = []
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            file = File().query.filter_by(name='crypto.txt').first()
-            filehandler.write(BytesIO(file.data))
+            test = file().query.filter_by(name='crypto.txt').first()
+            filehandler.write(BytesIO(test.data))
         
         #Create text file that reads new file
         with open("crypto.txt", 'rb') as filehandler:
@@ -123,8 +123,8 @@ def image2():
         stocks = []
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            file = File().query.filter_by(name='crypto.txt').first()
-            filehandler.write(BytesIO(file.data))
+            test = file().query.filter_by(name='crypto.txt').first()
+            filehandler.write(BytesIO(test.data))
         
         #Create text file that reads new file
         with open("crypto.txt", 'rb') as filehandler:
@@ -213,8 +213,8 @@ async def collectData():
                 pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
                 #Delete file in database and replace with new one
-                file = File().query.filter_by(name='crypto.txt').first().delete()
-                file = File(name="crypto.txt", data=filehandler.read())
+                test = file().query.filter_by(name='crypto.txt').first().delete()
+                test = file(name="crypto.txt", data=filehandler.read())
                 db.session.add(file)
                 db.session.commit()
 
@@ -304,8 +304,8 @@ async def train():
                 try:
                     #Create file from database
                     with open("model.h5", "w") as filehandler:
-                        file = File().query.filter_by(name='model.h5').first()
-                        filehandler.write(BytesIO(file.data))
+                        test = file().query.filter_by(name='model.h5').first()
+                        filehandler.write(BytesIO(test.data))
 
                     model = load_model('model.h5')
 
@@ -331,9 +331,9 @@ async def train():
                 model.save('model.h5')
 
                 with open('model.h5', 'r') as filehandler:
-                    file = File().query.filter_by(name='model.h5').first().delete()
-                    file = File(name="model.h5", data=filehandler.read())
-                    db.session.add(file)
+                    test = file().query.filter_by(name='model.h5').first().delete()
+                    test = file(name="model.h5", data=filehandler.read())
+                    db.session.add(test)
                     db.session.commit()
 
                 #Get prices to predict data
@@ -382,8 +382,8 @@ if __name__ == '__main__':
     try:
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
-            file = File().query.filter_by(name='crypto.txt').first()
-            filehandler.write(BytesIO(file.data))
+            test = file().query.filter_by(name='crypto.txt').first()
+            filehandler.write(BytesIO(test.data))
         
         #Create text file that reads new file
         with open("crypto.txt", 'rb') as filehandler:
@@ -416,8 +416,8 @@ if __name__ == '__main__':
             pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
             #Write file into database
-            file = File(name="crypto.txt", data=filehandler.read())
-            db.session.add(file)
+            test = file(name="crypto.txt", data=filehandler.read())
+            db.session.add(test)
             db.session.commit()
 
     t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
