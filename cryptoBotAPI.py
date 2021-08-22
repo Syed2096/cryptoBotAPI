@@ -170,7 +170,6 @@ def image2():
 
 #Create stocks object
 stocks = []
-tickers = client.get_all_tickers()
 
 #Neural Network Settings, predictionRequired must be lower than dataPoints(Restart entire setup procedure if you change anything here, also do not change the predictedPoints)
 predictionRequired = 100
@@ -186,6 +185,10 @@ numCoins = 100
 
 #Load model
 try:
+    #Create file from database
+    with open("model.h5", "w") as filehandler:
+        test = file.query.filter_by(name='model.h5').first()
+        filehandler.write(BytesIO(test.data))
     model = load_model('model.h5')
 
 except:
@@ -197,6 +200,19 @@ async def collectData():
     while True:
         try:                        
             start = t.time()
+            
+            #Create file from database
+            with open("crypto.txt", "wb") as filehandler:
+                test = file.query.filter_by(name='crypto.txt').first()
+                filehandler.write(BytesIO(test.data))
+            
+            #Create text file that reads new file
+            with open("crypto.txt", 'rb') as filehandler:
+                stocks = pickle.load(filehandler)
+                for stock in stocks:
+                    while len(stock.prices) > dataPoints:
+                        stock.prices.pop(0)
+
             # tickers = client.get_all_tickers()
             #Fill information till there are enough data points
             for stock in stocks:
@@ -208,12 +224,11 @@ async def collectData():
                     stock.prices.pop(0)
             
             #Write information into file
-            #os.remove("crypto.txt")
             with open("crypto.txt", "wb") as filehandler:
                 pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
                 #Delete file in database and replace with new one
-                test = file.query.filter_by(name='crypto.txt').first().delete()
+                file.query.filter_by(name='crypto.txt').first().delete()
                 test = file(name="crypto.txt", data=filehandler.read())
                 db.session.add(test)
                 db.session.commit()
@@ -230,7 +245,20 @@ async def collectData():
 async def predictPrice():
     try: 
         while True: 
-            start = t.time()           
+            start = t.time()   
+
+            #Create file from database
+            with open("crypto.txt", "wb") as filehandler:
+                test = file.query.filter_by(name='crypto.txt').first()
+                filehandler.write(BytesIO(test.data))
+            
+            #Create text file that reads new file
+            with open("crypto.txt", 'rb') as filehandler:
+                stocks = pickle.load(filehandler)
+                for stock in stocks:
+                    while len(stock.prices) > dataPoints:
+                        stock.prices.pop(0)
+
             for stock in stocks:
                 K.clear_session()
                 # tf.compat.v1.reset_default_graph()
@@ -277,6 +305,19 @@ async def predictPrice():
 
 async def train():
     while True:
+
+        #Create file from database
+        with open("crypto.txt", "wb") as filehandler:
+            test = file.query.filter_by(name='crypto.txt').first()
+            filehandler.write(BytesIO(test.data))
+        
+        #Create text file that reads new file
+        with open("crypto.txt", 'rb') as filehandler:
+            stocks = pickle.load(filehandler)
+            for stock in stocks:
+                while len(stock.prices) > dataPoints:
+                    stock.prices.pop(0)
+
         for stock in stocks:
             K.clear_session()
             if len(stock.prices) == 500:
@@ -331,7 +372,7 @@ async def train():
                 model.save('model.h5')
 
                 with open('model.h5', 'r') as filehandler:
-                    test = file.query.filter_by(name='model.h5').first().delete()
+                    file.query.filter_by(name='model.h5').first().delete()
                     test = file(name="model.h5", data=filehandler.read())
                     db.session.add(test)
                     db.session.commit()
@@ -378,7 +419,7 @@ async def train():
                 plt.clf()
 
 if __name__ == '__main__':
-
+    
     try:
         #Create file from database
         with open("crypto.txt", "wb") as filehandler:
@@ -394,6 +435,7 @@ if __name__ == '__main__':
 
     except:          
         num = 0
+        tickers = client.get_all_tickers()
         for ticker in tickers:
             if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
                 stocks.append(Stock(ticker['symbol']))
@@ -415,7 +457,7 @@ if __name__ == '__main__':
         with open("crypto.txt", "wb") as filehandler:
             pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
 
-            #Write file into database
+        with open("crypto.txt", "rb") as filehandler:
             test = file(name="crypto.txt", data=filehandler.read())
             db.session.add(test)
             db.session.commit()
