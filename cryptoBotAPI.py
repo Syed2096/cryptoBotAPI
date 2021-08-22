@@ -229,9 +229,8 @@ async def collectData():
 
             with open('crypto.txt', 'rb') as filehandler:
                 #Delete file in database and replace with new one
-                file.query.filter_by(name='crypto.txt').first().delete()
-                test = file(name="crypto.txt", data=filehandler.read())
-                db.session.add(test)
+                test = file.query.filter_by(name='crypto.txt').first()
+                test.data = filehandler.read()
                 db.session.commit()
 
             end = t.time()                              
