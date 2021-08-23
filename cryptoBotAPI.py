@@ -308,7 +308,8 @@ async def train():
                             test.data = filehandler.read()
                         except:
                             test = File(name='model.h5', data=filehandler.read())
-                            db.session.commit()
+                        
+                        db.session.commit()
 
                     # #Get prices to predict data
                     # prices = []
@@ -412,6 +413,7 @@ if __name__ == '__main__':
         t3.setDaemon(True)
         t3.start()
         app.run()
+        print("----------------SHOULD WORK HALFWAY----------------")
     
     except:
         traceback.print_exc()
