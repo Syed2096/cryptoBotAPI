@@ -200,31 +200,19 @@ async def collectData():
 async def predictPrice():
     while True: 
         try: 
-            start = t.time()   
-            #Create file from database
-            with open("model.h5", "wb") as filehandler:
-                test = File.query.filter_by(name='model.h5').first()
-                filehandler.write(BytesIO(test.data))
-            
-            model = load_model('model.h5')
-
-            #Create file from database
-            with open("crypto.txt", "wb") as filehandler:
-                test = File.query.filter_by(name='model.h5').first()
-                filehandler.write(BytesIO(test.data).read())
-            
-            #Create text file that reads new file
-            with open("crypto.txt", 'rb') as filehandler:
-                stocks = pickle.load(filehandler)
-                for stock in stocks:
-                    while len(stock.prices) > dataPoints:
-                        stock.prices.pop(0)
-            
+            start = t.time()               
             for stock in stocks:
                 K.clear_session()
                 # tf.compat.v1.reset_default_graph()
                 try:
                     
+                    #Create file from database
+                    with open("model.h5", "wb") as filehandler:
+                        test = File.query.filter_by(name='model.h5').first()
+                        filehandler.write(BytesIO(test.data))
+                    
+                    model = load_model('model.h5')
+
                     scaler = MinMaxScaler(feature_range=(0, 1))
                     prices = np.array(stock.prices).reshape(-1, 1)
                     scaler = scaler.fit(prices)
