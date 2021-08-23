@@ -36,8 +36,8 @@ client = Client(APIKEY, APISECRET)
 
 #Create flask app
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = URI
-# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
+# app.config["SQLALCHEMY_DATABASE_URI"] = URI
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
