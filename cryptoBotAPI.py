@@ -84,6 +84,7 @@ def image1():
                 break
         
         if price == None:
+            print("No Prices")
             return Response(status=404)
         
         plt.title(str(coin).upper() + ' Price and Previous Predictions')
@@ -171,8 +172,6 @@ async def collectData():
             # tickers = client.get_all_tickers()
             #Fill information till there are enough data points
             for stock in stocks:
-                #stock.alreadyHave = False
-                #stock.marketClosed = False
                 ticker = client.get_symbol_ticker(symbol=stock.symbol)
                 stock.prices.append(float(ticker['price']))
                 while len(stock.prices) > dataPoints:
