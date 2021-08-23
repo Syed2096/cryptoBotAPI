@@ -73,19 +73,6 @@ except:
 @cross_origin()
 def image1(): 
     try:
-        stocks = []
-        #Create file from database
-        with open("crypto.txt", "wb") as filehandler:
-            test = File.query.filter_by(name='crypto.txt').first()
-            filehandler.write(BytesIO(test.data).read())
-        
-        #Read file
-        with open("crypto.txt", 'rb') as filehandler:
-            stocks = pickle.load(filehandler)
-            for stock in stocks:
-                while len(stock.prices) > dataPoints:
-                    stock.prices.pop(0)
-        
         coin = json.loads(request.data)
         coin = coin['coin']
         price = None
@@ -127,20 +114,7 @@ def image1():
 @cross_origin()
 def image2(): 
     
-    try:
-        stocks = []
-        #Create file from database
-        with open("crypto.txt", "wb") as filehandler:
-            test = File.query.filter_by(name='crypto.txt').first()
-            filehandler.write(BytesIO(test.data).read())
-        
-        #Create text file that reads new file
-        with open("crypto.txt", 'rb') as filehandler:
-            stocks = pickle.load(filehandler)
-            for stock in stocks:
-                while len(stock.prices) > dataPoints:
-                    stock.prices.pop(0)
-    
+    try:    
         coin = json.loads(request.data)
         coin = coin['coin']
         prediction = False
@@ -177,7 +151,7 @@ def image2():
         return Response(status=404)
 
 #Neural Network Settings, predictionRequired must be lower than dataPoints(Restart entire setup procedure if you change anything here, also do not change the predictedPoints)
-predictionRequired = 100
+predictionRequired = 200
 predictAhead = 60
 predictedPoints = predictAhead + 200
 
@@ -236,34 +210,18 @@ async def collectData():
         except:
             traceback.print_exc()
 
+model = None
+
 async def predictPrice():
     while True: 
         try: 
             start = t.time()   
 
-            #Create file from database
-            with open("crypto.txt", "wb") as filehandler:
-                test = File.query.filter_by(name='crypto.txt').first()
-                filehandler.write(BytesIO(test.data).read())
-            
-            #Create text file that reads new file
-            with open("crypto.txt", 'rb') as filehandler:
-                stocks = pickle.load(filehandler)
-                for stock in stocks:
-                    while len(stock.prices) > dataPoints:
-                        stock.prices.pop(0)
-
             for stock in stocks:
                 K.clear_session()
                 # tf.compat.v1.reset_default_graph()
                 try:
-                    #Create model file from database
-                    with open('model.h5', 'wb') as filehandler:
-                        test = File.query.filter_by(name='model.h5').first()
-                        filehandler.write(BytesIO(test.data).read())
-                    
-                    model = load_model('model.h5')
-                    
+
                     scaler = MinMaxScaler(feature_range=(0, 1))
                     prices = np.array(stock.prices).reshape(-1, 1)
                     scaler = scaler.fit(prices)
@@ -287,14 +245,6 @@ async def predictPrice():
                 # print(stock.symbol + ": " + str(prediction))
                 while len(stock.predictedPrices) > predictedPoints:
                     stock.predictedPrices.pop(0) 
-            
-            with open("crypto.txt", "wb") as filehandler:
-                pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
-
-            with open("crypto.txt", "rb") as filehandler:
-                test = File.query.filter_by(name='crypto.txt').first()
-                test.data = filehandler.read()
-                db.session.commit()
 
             end = t.time()                                                
             newRefresh = round(refreshRate - (end - start))
@@ -314,18 +264,6 @@ async def predictPrice():
 async def train():
     while True:
         try:
-            #Create file from database
-            with open("crypto.txt", "wb") as filehandler:
-                test = File.query.filter_by(name='crypto.txt').first()
-                filehandler.write(BytesIO(test.data).read())
-            
-            #Create text file that reads new file
-            with open("crypto.txt", 'rb') as filehandler:
-                stocks = pickle.load(filehandler)
-                for stock in stocks:
-                    while len(stock.prices) > dataPoints:
-                        stock.prices.pop(0)
-
             for stock in stocks:
                 K.clear_session()
                 if len(stock.prices) == 500:
@@ -380,9 +318,13 @@ async def train():
                     model.save('model.h5')
 
                     with open('model.h5', 'rb') as filehandler:
-                        test = File.query.filter_by(name='model.h5').first()
-                        test.data = filehandler.read()
-                        db.session.commit()
+                        try:
+                            test = File.query.filter_by(name='model.h5').first()
+                        
+                        except:
+                            test = File(name='model.h5', data=filehandler.read())
+                            db.session.add(test)
+                            db.session.commit()
 
                     #Get prices to predict data
                     prices = []
@@ -427,23 +369,10 @@ async def train():
         except:
             traceback.print_exc()
 
+stocks =[]
+
 if __name__ == '__main__':
     
-    # try:
-    #     #Create file from database
-    #     with open("crypto.txt", "wb") as filehandler:
-    #         test = file.query.filter_by(name='crypto.txt').first()
-    #         filehandler.write(BytesIO(test.data))
-        
-    #     #Create text file that reads new file
-    #     with open("crypto.txt", 'rb') as filehandler:
-    #         stocks = pickle.load(filehandler)
-    #         for stock in stocks:
-    #             while len(stock.prices) > dataPoints:
-    #                 stock.prices.pop(0)
-
-    # except:   
-    stocks = []
     try:       
         num = 0
         tickers = client.get_all_tickers()

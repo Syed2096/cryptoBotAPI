@@ -78,8 +78,8 @@ def image1():
                         predicted.append(predictedPrices[i])
                 
                 plt.style.use('dark_background')   
-                plt.plot(prices, color='white', label=f"Actual {stock.symbol} Price")
-                plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
+                plt.plot(prices, color='white', label='Actual ' + str(stock.symbol) + ' Price')
+                plt.plot(predicted, color='green', label='Predicted ' + str(stock.symbol) + ' Price')
                 break
         
         if price == None:
@@ -124,7 +124,7 @@ def image2():
                     predicted = predictedPrices
 
                 plt.style.use('dark_background')   
-                plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
+                plt.plot(predicted, color='green', label='Predicted ' + str(stock.symbol) + " Price")
                 break
         
         if prediction == None:
