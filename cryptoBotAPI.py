@@ -104,7 +104,6 @@ def image2():
     try:    
         coin = json.loads(request.data)
         coin = coin['coin']
-        print(coin.upper)
         prediction = False
         for stock in stocks:
             
@@ -234,7 +233,7 @@ async def predictPrice():
                 
                 stock.predictedPrices.append(prediction)
                 # print(stock.symbol + ": " + str(prediction))
-                while len(stock.predictedPrices) > predictedPoints:
+                while len(stock.predictedPrices) > dataPoints:
                     stock.predictedPrices.pop(0) 
 
             end = t.time()                                                
@@ -255,7 +254,7 @@ async def train():
                     
                     #Prices used to train and predict next points
                     prices = []
-                    for i in range(400):
+                    for i in range(500):
                         prices.append(stock.prices[i])
 
                     #Prepare data using first 400 points
@@ -311,46 +310,46 @@ async def train():
                             test = File(name='model.h5', data=filehandler.read())
                             db.session.commit()
 
-                    #Get prices to predict data
-                    prices = []
-                    for i in range(0, 400 - predictAhead):
-                        prices.append(stock.prices[i])
+                    # #Get prices to predict data
+                    # prices = []
+                    # for i in range(0, 400 - predictAhead):
+                    #     prices.append(stock.prices[i])
 
-                    predictedPrices = []
-                    #Get predicted prices for points 400 - 500
-                    for i in range(400 - predictAhead + 1, 500 - predictAhead):
-                        scaler = MinMaxScaler(feature_range=(0, 1))
-                        predictPrices = np.array(prices).reshape(-1, 1)
-                        scaler = scaler.fit(predictPrices)
-                        total_dataset = predictPrices
+                    # predictedPrices = []
+                    # #Get predicted prices for points 400 - 500
+                    # for i in range(400 - predictAhead + 1, 500 - predictAhead):
+                    #     scaler = MinMaxScaler(feature_range=(0, 1))
+                    #     predictPrices = np.array(prices).reshape(-1, 1)
+                    #     scaler = scaler.fit(predictPrices)
+                    #     total_dataset = predictPrices
 
-                        model_inputs = np.array(total_dataset[len(total_dataset) - predictionRequired:]).reshape(-1, 1)
-                        model_inputs = scaler.transform(model_inputs)
+                    #     model_inputs = np.array(total_dataset[len(total_dataset) - predictionRequired:]).reshape(-1, 1)
+                    #     model_inputs = scaler.transform(model_inputs)
 
-                        #Predict Next period
-                        real_data = [model_inputs[len(model_inputs) - predictionRequired:len(model_inputs), 0]]
-                        real_data = np.array(real_data)
-                        real_data = np.reshape(real_data, (real_data.shape[0], real_data.shape[1], 1))
+                    #     #Predict Next period
+                    #     real_data = [model_inputs[len(model_inputs) - predictionRequired:len(model_inputs), 0]]
+                    #     real_data = np.array(real_data)
+                    #     real_data = np.reshape(real_data, (real_data.shape[0], real_data.shape[1], 1))
 
-                        prediction = model.predict(real_data)
-                        prediction = scaler.inverse_transform(prediction)
-                        predictedPrices.append(prediction)
-                        prices.append(stock.prices[i])
+                    #     prediction = model.predict(real_data)
+                    #     prediction = scaler.inverse_transform(prediction)
+                    #     predictedPrices.append(prediction)
+                    #     prices.append(stock.prices[i])
 
-                    #Get actual prices for stocks used for result
-                    actualPrices = []
-                    for i in range(400, 500):
-                        actualPrices.append(float(stock.prices[i]))
+                    # #Get actual prices for stocks used for result
+                    # actualPrices = []
+                    # for i in range(400, 500):
+                    #     actualPrices.append(float(stock.prices[i]))
                     
-                    actualPrices = np.reshape(actualPrices, -1)
-                    predictedPrices = np.reshape(predictedPrices, -1)
+                    # actualPrices = np.reshape(actualPrices, -1)
+                    # predictedPrices = np.reshape(predictedPrices, -1)
                     
-                    plt.style.use('dark_background')   
-                    plt.plot(actualPrices, color='white')
-                    plt.plot(predictedPrices, color='green')
-                    plt.title(str(stock.symbol))
-                    # plt.savefig("./plots/"+ str(stock.symbol) + ".png", transparent=True)
-                    plt.clf()
+                    # plt.style.use('dark_background')   
+                    # plt.plot(actualPrices, color='white')
+                    # plt.plot(predictedPrices, color='green')
+                    # plt.title(str(stock.symbol))
+                    # # plt.savefig("./plots/"+ str(stock.symbol) + ".png", transparent=True)
+                    # plt.clf()
         except:
             traceback.print_exc()
 
