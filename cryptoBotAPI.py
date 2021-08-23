@@ -37,10 +37,9 @@ client = Client(APIKEY, APISECRET)
 #Create flask app
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = URI
+# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
-# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
-
 
 #File model
 class File(db.Model):
@@ -60,6 +59,14 @@ class Stock:
 # def test(): 
 #     print(request.data)
 #     return send_file('../plots/BTCUSDT.png')
+
+try:
+    test = File.query.filter_by(name='crypto.txt').first()
+    db.session.delete(test)
+    db.session.commit()
+
+except:
+    print('Database empty')
 
 # Price and Predictions
 @app.route('/image1', methods=['POST'])
@@ -136,12 +143,12 @@ def image2():
     
         coin = json.loads(request.data)
         coin = coin['coin']
-        prediction = None
+        prediction = False
         for stock in stocks:
             
             if stock.symbol == coin.upper() or stock.symbol == coin.upper() + "USDT":
                 
-                prediction = stock.predictedPrices[-1]
+                prediction = True
                 predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
                 #Last 60 points
@@ -157,7 +164,7 @@ def image2():
                 plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
                 break
         
-        if prediction == None:
+        if prediction == False:
             return Response(status=404)
         
         plt.title(str(coin).upper() + ' Future Prediction')
@@ -168,9 +175,6 @@ def image2():
     except:
         traceback.print_exc()
         return Response(status=404)
-
-#Create stocks object
-stocks = []
 
 #Neural Network Settings, predictionRequired must be lower than dataPoints(Restart entire setup procedure if you change anything here, also do not change the predictedPoints)
 predictionRequired = 100
@@ -233,8 +237,8 @@ async def collectData():
             traceback.print_exc()
 
 async def predictPrice():
-    try: 
-        while True: 
+    while True: 
+        try: 
             start = t.time()   
 
             #Create file from database
@@ -280,10 +284,18 @@ async def predictPrice():
                     prediction = 0  
                 
                 stock.predictedPrices.append(prediction)
-                #print(stock.symbol + ": " + str(prediction))
+                # print(stock.symbol + ": " + str(prediction))
                 while len(stock.predictedPrices) > predictedPoints:
                     stock.predictedPrices.pop(0) 
-              
+            
+            with open("crypto.txt", "wb") as filehandler:
+                pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
+
+            with open("crypto.txt", "rb") as filehandler:
+                test = File.query.filter_by(name='crypto.txt').first()
+                test.data = filehandler.read()
+                db.session.commit()
+
             end = t.time()                                                
             newRefresh = round(refreshRate - (end - start))
             
@@ -296,8 +308,8 @@ async def predictPrice():
             #     fut = asyncio.run_coroutine_threadsafe(test, bot.loop)
             #     fut.result()
 
-    except:
-        traceback.print_exc()
+        except:
+            traceback.print_exc()
 
 async def train():
     while True:
@@ -431,6 +443,7 @@ if __name__ == '__main__':
     #                 stock.prices.pop(0)
 
     # except:   
+    stocks = []
     try:       
         num = 0
         tickers = client.get_all_tickers()
