@@ -139,6 +139,7 @@ def image2():
                 break
         
         if prediction == False:
+            print('No Prediction!')
             return Response(status=404)
         
         plt.title(str(coin).upper() + ' Future Prediction')
