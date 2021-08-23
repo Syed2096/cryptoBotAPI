@@ -204,8 +204,7 @@ async def predictPrice():
             #Create file from database
             with open("model.h5", "wb") as filehandler:
                 test = File.query.filter_by(name='model.h5').first()
-                test.data = BytesIO(filehandler.read())
-                db.session.commit()
+                filehandler.write(BytesIO(test.data))
             
             model = load_model('model.h5')
 
@@ -315,14 +314,11 @@ async def train():
                     # model.fit(x_train, y_train, epochs=1000)
                     model.save('model.h5')
 
+                    #Save file to database
                     with open('model.h5', 'rb') as filehandler:
-                        try:
-                            test = File.query.filter_by(name='model.h5').first()
-                            test.data = BytesIO(filehandler.read())
-                        except:
-                            test = File(name='model.h5', data=filehandler.read())
-                            db.session.add(test)
-                            db.session.commit()
+                        test = File.query.filter_by(name='model.h5')
+                        test.data = filehandler.read()
+                        db.session.commit()
 
                     #Get prices to predict data
                     prices = []
