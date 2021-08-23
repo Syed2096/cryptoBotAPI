@@ -201,16 +201,28 @@ async def predictPrice():
     while True: 
         try: 
             start = t.time()   
+            #Create file from database
+            with open("model.h5", "wb") as filehandler:
+                test = File.query.filter_by(name='model.h5').first()
+                test.data = BytesIO(filehandler.read())
+                db.session.commit()
+            
+            #Create file from database
+            with open("crypto.txt", "wb") as filehandler:
+                test = File.query.filter_by(name='model.h5').first()
+                filehandler.write(BytesIO(test.data).read())
+            
+            #Create text file that reads new file
+            with open("crypto.txt", 'rb') as filehandler:
+                stocks = pickle.load(filehandler)
+                for stock in stocks:
+                    while len(stock.prices) > dataPoints:
+                        stock.prices.pop(0)
 
             for stock in stocks:
                 K.clear_session()
                 # tf.compat.v1.reset_default_graph()
                 try:
-                    
-                    #Create file from database
-                    with open("model.h5", "wb") as filehandler:
-                        test = File.query.filter_by(name='model.h5').first()
-                        filehandler.write(BytesIO(test.data).read())
 
                     model = load_model('model.h5')
                     
@@ -306,7 +318,7 @@ async def train():
                     with open('model.h5', 'rb') as filehandler:
                         try:
                             test = File.query.filter_by(name='model.h5').first()
-                        
+                            test.data = BytesIO(filehandler.read())
                         except:
                             test = File(name='model.h5', data=filehandler.read())
                             db.session.add(test)
