@@ -104,16 +104,17 @@ def image2():
     try:    
         coin = json.loads(request.data)
         coin = coin['coin']
+        print(coin.upper())
         prediction = False
         for stock in stocks:
             
-            if  stock.symbol == coin.upper() or stock.symbol == coin.upper() + "USDT":
+            if stock.symbol == coin.upper() or stock.symbol == coin.upper() + "USDT":
                 
                 prediction = True
                 predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
                 #Last 60 points
-                if len(predictedPrices) >= predictAhead:
+                if len(predictedPrices) > predictAhead:
                     predicted = []
                     for i in range(len(predictedPrices) - predictAhead, len(predictedPrices)):
                         predicted.append(predictedPrices[i])
