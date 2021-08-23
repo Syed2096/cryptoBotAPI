@@ -36,8 +36,8 @@ client = Client(APIKEY, APISECRET)
 
 #Create flask app
 app = Flask(__name__)
-# app.config["SQLALCHEMY_DATABASE_URI"] = URI
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
+app.config["SQLALCHEMY_DATABASE_URI"] = URI
+# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
@@ -104,7 +104,7 @@ def image2():
     try:    
         coin = json.loads(request.data)
         coin = coin['coin']
-        print(coin.upper())
+        print(coin.upper)
         prediction = False
         for stock in stocks:
             
