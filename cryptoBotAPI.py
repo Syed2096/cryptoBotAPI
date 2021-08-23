@@ -207,6 +207,8 @@ async def predictPrice():
                 test.data = BytesIO(filehandler.read())
                 db.session.commit()
             
+            model = load_model('model.h5')
+
             #Create file from database
             with open("crypto.txt", "wb") as filehandler:
                 test = File.query.filter_by(name='model.h5').first()
@@ -218,13 +220,11 @@ async def predictPrice():
                 for stock in stocks:
                     while len(stock.prices) > dataPoints:
                         stock.prices.pop(0)
-
+            
             for stock in stocks:
                 K.clear_session()
                 # tf.compat.v1.reset_default_graph()
                 try:
-
-                    model = load_model('model.h5')
                     
                     scaler = MinMaxScaler(feature_range=(0, 1))
                     prices = np.array(stock.prices).reshape(-1, 1)
