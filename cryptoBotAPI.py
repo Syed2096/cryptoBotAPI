@@ -54,20 +54,6 @@ class Stock:
         self.prices = []
         self.predictedPrices = []
 
-# @app.route('/test', methods=['POST'])
-# @cross_origin()
-# def test(): 
-#     print(request.data)
-#     return send_file('../plots/BTCUSDT.png')
-
-try:
-    test = File.query.filter_by(name='crypto.txt').first()
-    db.session.delete(test)
-    db.session.commit()
-
-except:
-    print('Database empty')
-
 # Price and Predictions
 @app.route('/image1', methods=['POST'])
 @cross_origin()
@@ -77,7 +63,7 @@ def image1():
         coin = coin['coin']
         price = None
         for stock in stocks:
-            if stock.symbol == coin.upper() or stock.symbol == coin.upper() + "USDT":
+            if str(stock.symbol) == str(coin).upper() or str(stock.symbol) == str(coin).upper() + "USDT":
                 price = stock.prices[-1]  
                 predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
@@ -120,7 +106,7 @@ def image2():
         prediction = False
         for stock in stocks:
             
-            if stock.symbol == coin.upper() or stock.symbol == coin.upper() + "USDT":
+            if str(stock.symbol) == str(coin).upper() or str(stock.symbol) == str(coin).upper() + "USDT":
                 
                 prediction = True
                 predictedPrices = np.array(stock.predictedPrices).reshape(-1)
@@ -257,12 +243,6 @@ async def predictPrice():
             
             if newRefresh > 0:
                 await asyncio.sleep(newRefresh)
-            
-            # else:
-            #     generalChannel = bot.get_channel(805608327538278423)
-            #     test = generalChannel.send("Time Limit Reached for Models")
-            #     fut = asyncio.run_coroutine_threadsafe(test, bot.loop)
-            #     fut.result()
 
         except:
             traceback.print_exc()
@@ -380,6 +360,14 @@ stocks =[]
 if __name__ == '__main__':
     
     try:       
+        try:
+            test = File.query.filter_by(name='crypto.txt').first()
+            db.session.delete(test)
+            db.session.commit()
+
+        except:
+            print('Database empty')
+
         num = 0
         tickers = client.get_all_tickers()
         for ticker in tickers:
