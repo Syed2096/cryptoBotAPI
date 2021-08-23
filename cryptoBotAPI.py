@@ -63,7 +63,7 @@ def image1():
         coin = coin['coin']
         price = None
         for stock in stocks:
-            if  stock.symbol == coin.upper() or stock.symbol == coin.upper() + "USDT":
+            if str(stock.symbol) == str(coin).upper() or str(stock.symbol) == str(coin).upper() + "USDT":
                 price = stock.prices[-1]  
                 predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
@@ -108,7 +108,7 @@ def image2():
         prediction = False
         for stock in stocks:
             
-            if stock.symbol == coin.upper() or stock.symbol == coin.upper() + "USDT":
+            if str(stock.symbol) == str(coin).upper() or str(stock.symbol) == str(coin).upper() + "USDT":
                 
                 prediction = True
                 predictedPrices = np.array(stock.predictedPrices).reshape(-1)
