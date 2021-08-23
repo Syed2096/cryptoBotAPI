@@ -211,8 +211,6 @@ async def collectData():
         except:
             traceback.print_exc()
 
-model = None
-
 async def predictPrice():
     while True: 
         try: 
@@ -222,7 +220,14 @@ async def predictPrice():
                 K.clear_session()
                 # tf.compat.v1.reset_default_graph()
                 try:
+                    
+                    #Create file from database
+                    with open("model.h5", "wb") as filehandler:
+                        test = File.query.filter_by(name='model.h5').first()
+                        filehandler.write(BytesIO(test.data).read())
 
+                    model = load_model('model.h5')
+                    
                     scaler = MinMaxScaler(feature_range=(0, 1))
                     prices = np.array(stock.prices).reshape(-1, 1)
                     scaler = scaler.fit(prices)
