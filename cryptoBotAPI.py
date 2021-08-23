@@ -304,9 +304,12 @@ async def train():
 
                     #Save file to database
                     with open('model.h5', 'rb') as filehandler:
-                        test = File.query.filter_by(name='model.h5')
-                        test.data = filehandler.read()
-                        db.session.commit()
+                        try:
+                            test = File.query.filter_by(name='model.h5')
+                            test.data = filehandler.read()
+                        except:
+                            test = File(name='model.h5', data=filehandler.read())
+                            db.session.commit()
 
                     #Get prices to predict data
                     prices = []
@@ -363,6 +366,14 @@ if __name__ == '__main__':
 
         except:
             print('Database empty')
+        
+        try:
+            test = File.query.filter_by(name='model.h5').first()
+            db.session.delete(test)
+            db.session.commit()
+        
+        except:
+            print('No Model')
 
         num = 0
         tickers = client.get_all_tickers()
