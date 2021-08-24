@@ -38,15 +38,22 @@ client = Client(APIKEY, APISECRET)
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = URI
 # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+# app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
+
+
+#File model
+class File(db.Model):
+    id = db.Column(db.Integer, unique=True, nullable=False, primary_key=True)
+    name = db.Column(db.String(100))
+    data = db.Column(db.LargeBinary(length=(2**32)-1))
 
 #File model
 class Stock(db.Model):
     symbol = db.Column(db.String(100), unique=True, nullable=False, primary_key=True)
     isStock = db.Column(db.Boolean, nullable=False)
-    prices = db.Column(db.Array(db.Float(500)))
-    predictedPrices = db.Columb(db.Array(db.Float(260)))
+    prices = db.Column(db.Float(500))
+    predictedPrices = db.Column(db.Float(260))
     data = db.Column(db.LargeBinary(length=(2**32)-1))
 
 # Price and Predictions
@@ -280,13 +287,21 @@ if __name__ == '__main__':
     try:       
         
         try:
+            test = File.query.all()
+            db.session.delete(test)
+
+        except:
+            print('Deleting Old-Version Database!')
+
+        try:
             test = Stock.query.all()
             db.session.delete(test)
-            db.session.commit()
         
         except:
             print('Performing First Time Start Up!')
 
+        
+        db.session.commit()
         num = 0
         tickers = client.get_all_tickers()
         for ticker in tickers:
