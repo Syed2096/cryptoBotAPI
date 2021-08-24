@@ -104,6 +104,7 @@ def image2():
     try:    
         coin = json.loads(request.data)
         coin = coin['coin']
+        print(str(coin).upper())
         prediction = False
         for stock in stocks:
             
