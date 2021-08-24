@@ -58,16 +58,17 @@ def image1():
         coin = coin['coin']
         coin = str(coin).upper() + 'USDT'
         stock = Stock.query.filter_by(symbol=coin).first()
+        prices = json.loads(stock.prices)
+        predictedPrices = json.loads(stock.predictedPrices)
         predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
         #Last 200 points
-        prices = []
-        for i in range(len(stock.prices) - 200, len(stock.prices)):
-            prices.append(stock.prices[i])
+        for i in range(len(prices) - 200, len(prices)):
+            prices.append(prices[i])
         
         #First 200 points
         predicted = []
-        if len(predictedPrices) >= 200:
+        if len(predictedPrices) >= predictedPoints - 1:
             for i in range(0, len(predictedPrices) - predictAhead):
                 predicted.append(predictedPrices[i])
         
@@ -92,7 +93,8 @@ def image2():
         coin = json.loads(request.data)
         coin = coin['coin']
         coin = str(coin).upper() + 'USDT'
-        stock = Stock.query.filter_by(symbol=coin).first()     
+        stock = Stock.query.filter_by(symbol=coin).first()   
+        predictedPrices = json.loads(stock.predictedPrices)  
         predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
         #Last 60 points
