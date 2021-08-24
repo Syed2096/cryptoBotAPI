@@ -236,7 +236,7 @@ async def predictPrice():
                     prediction = 0  
                 
                 stock.predictedPrices.append(prediction)
-                # print(stock.symbol + ": " + str(prediction))
+                print(stock.symbol + ": " + str(prediction))
                 while len(stock.predictedPrices) > dataPoints:
                     stock.predictedPrices.pop(0) 
 
