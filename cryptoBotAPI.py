@@ -208,7 +208,7 @@ async def predictPrice():
                     #Create file from database
                     with open("model.h5", "wb") as filehandler:
                         test = File.query.filter_by(name='model.h5').first()
-                        filehandler.write(BytesIO(test.data))
+                        filehandler.write(BytesIO(test.data).read())
                     
                     model = load_model('model.h5')
 
@@ -235,6 +235,15 @@ async def predictPrice():
                 # print(stock.symbol + ": " + str(prediction))
                 while len(stock.predictedPrices) > dataPoints:
                     stock.predictedPrices.pop(0) 
+                
+                with open('model.h5', 'rb') as filehandler:
+                    try:
+                        test = File.query.filter_by(name='model.h5').first()
+                        test.data = filehandler.read()
+                    except:
+                        test = File(name='model.h5', data=filehandler.read())
+                
+                    db.session.commit()
 
             end = t.time()                                                
             newRefresh = round(refreshRate - (end - start))
@@ -412,8 +421,8 @@ if __name__ == '__main__':
         t3 = threading.Thread(target=asyncio.run, args=(train(),))
         t3.setDaemon(True)
         t3.start()
-        app.run()
         print("----------------SHOULD WORK HALFWAY----------------")
+        app.run()
     
     except:
         traceback.print_exc()
