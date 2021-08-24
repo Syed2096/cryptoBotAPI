@@ -62,9 +62,10 @@ def image1():
     try:
         coin = json.loads(request.data)
         coin = coin['coin']
+        
         price = None
         for stock in stocks:
-            if str(stock.symbol) == str(coin).upper() or str(stock.symbol) == str(coin).upper() + "USDT":
+            if stock.symbol == str(coin).upper() or stock.symbol == str(coin).upper() + "USDT":
                 price = stock.prices[-1]  
                 predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
@@ -73,25 +74,25 @@ def image1():
                 for i in range(len(stock.prices) - 200, len(stock.prices)):
                     prices.append(stock.prices[i])
                 
-                # #First 200 points
+                #First 200 points
                 predicted = []
                 if len(predictedPrices) >= 200:
                     for i in range(0, len(predictedPrices) - predictAhead):
                         predicted.append(predictedPrices[i])
-                
+              
                 plt.style.use('dark_background')   
                 plt.plot(prices, color='white', label=f"Actual {stock.symbol} Price")
                 plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
                 break
+               
+        if price != None:
+            plt.title(str(stock.symbol) + ' Price and Predictions')
+            plt.savefig(fname='plot', transparent=True)
+            plt.clf()
+
+            return send_file('plot.png')
         
-        if price == None:
-            print("No Prices")
-            return Response(status=404)
-        
-        plt.title(str(coin).upper() + ' Price and Previous Predictions')
-        plt.savefig(fname='plot', transparent=True)
-        plt.clf()
-        return send_file('plot.png')
+        return Response(status=404)
     
     except:
         traceback.print_exc()
@@ -106,16 +107,16 @@ def image2():
     try:    
         coin = json.loads(request.data)
         coin = coin['coin']
-        # print(str(coin).upper())
+        prediction = None
         for stock in stocks:
             
-            if str(stock.symbol) == str(coin).upper() or str(stock.symbol) == str(coin).upper() + "USDT":
+            if stock.symbol == str(coin).upper() or stock.symbol == str(coin).upper() + "USDT":
                 
-                prediction = True
+                prediction = stock.predictedPrices[-1]
                 predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
                 #Last 60 points
-                if len(predictedPrices) > predictAhead:
+                if len(predictedPrices) >= predictAhead:
                     predicted = []
                     for i in range(len(predictedPrices) - predictAhead, len(predictedPrices)):
                         predicted.append(predictedPrices[i])
@@ -127,15 +128,13 @@ def image2():
                 plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
                 break
         
-        if prediction == False:
-            print('No Prediction!')
-            return Response(status=404)
+        if prediction != None:
+            plt.tite(str(stock.symbol) + ' Future Predictions')
+            plt.savefig(fname='plot', transparent=True)
+            return send_file('plot.png')
         
-        plt.title(str(coin).upper() + ' Future Prediction')
-        plt.savefig(fname='plot', transparent=True)
-        plt.clf()
-        return send_file('plot.png')
-    
+        return Response(status=404)
+
     except:
         traceback.print_exc()
         return Response(status=404)
@@ -357,7 +356,7 @@ async def train():
         except:
             traceback.print_exc()
 
-stocks =[]
+stocks = []
 
 if __name__ == '__main__':
     
