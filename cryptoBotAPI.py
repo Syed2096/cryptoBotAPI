@@ -38,7 +38,7 @@ client = Client(APIKEY, APISECRET)
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = URI
 # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
-# app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 
@@ -64,7 +64,7 @@ def image1():
         coin = json.loads(request.data)
         coin = coin['coin']
         coin = str(coin).upper() + 'USDT'
-        stock = Stock.query.filter_buy(symbol=coin).first()
+        stock = Stock.query.filter_by(symbol=coin).first()
         predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
         #Last 200 points
@@ -99,7 +99,7 @@ def image2():
         coin = json.loads(request.data)
         coin = coin['coin']
         coin = str(coin).upper() + 'USDT'
-        stock = Stock.query.filter_buy(symbol=coin).first()     
+        stock = Stock.query.filter_by(symbol=coin).first()     
         predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
         #Last 60 points
