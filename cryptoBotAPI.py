@@ -36,8 +36,8 @@ client = Client(APIKEY, APISECRET)
 
 #Create flask app
 app = Flask(__name__)
-# app.config["SQLALCHEMY_DATABASE_URI"] = URI
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
+app.config["SQLALCHEMY_DATABASE_URI"] = URI
+# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
@@ -414,7 +414,6 @@ if __name__ == '__main__':
         t3 = threading.Thread(target=asyncio.run, args=(train(),))
         t3.setDaemon(True)
         t3.start()
-        print("----------------SHOULD WORK HALFWAY----------------")
         app.run()
     
     except:
