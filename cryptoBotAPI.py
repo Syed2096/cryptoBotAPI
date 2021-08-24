@@ -41,13 +41,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
-
-#File model
-class File(db.Model):
-    id = db.Column(db.Integer, unique=True, nullable=False, primary_key=True)
-    name = db.Column(db.String(100))
-    data = db.Column(db.LargeBinary(length=(2**32)-1))
-
 #File model
 class Stock(db.Model):
     symbol = db.Column(db.String(100), unique=True, nullable=False, primary_key=True)
@@ -142,11 +135,12 @@ async def collectData():
             tickers = client.get_all_tickers()
             #Fill information till there are enough data points
             for stock in stocks:
+                prices = json.loads(stock.prices)
                 for ticker in tickers:
                     if ticker['symbol'] == stock.symbol:
-                        stock.prices.append(float(ticker['price']))
+                        prices.append(float(ticker['price']))
                         while len(stock.prices) > dataPoints:
-                            stock.prices.pop(0)
+                           prices.pop(0)
                         break
             
             db.session.commit()
@@ -157,6 +151,7 @@ async def collectData():
                 await asyncio.sleep(newRefresh)
             
         except:
+            print("Collect Data:")
             traceback.print_exc()
 
 async def predictPrice():
@@ -167,6 +162,8 @@ async def predictPrice():
                 K.clear_session()
                 if stock.isStock:
                 # tf.compat.v1.reset_default_graph()
+                    prices = json.loads(stock.prices)
+                    predictedPrices = json.loads(stock.predictedPrices)
                     try:
                         
                         #Create file from database
@@ -195,10 +192,14 @@ async def predictPrice():
                     except:
                         prediction = 0  
                     
-                    stock.predictedPrices.append(prediction)
+                    predictedPrices.append(prediction)
                     print(stock.symbol + ": " + str(prediction))
-                    while len(stock.predictedPrices) > dataPoints:
-                        stock.predictedPrices.pop(0) 
+                    while len(predictedPrices) > dataPoints:
+                        predictedPrices.pop(0) 
+                    
+                    stock.predictedPrices = json.dumps(predictedPrices)
+            
+            db.session.commit()            
 
             end = t.time()                                                
             newRefresh = round(refreshRate - (end - start))
@@ -207,6 +208,7 @@ async def predictPrice():
                 await asyncio.sleep(newRefresh)
 
         except:
+            print("Predict Price:")
             traceback.print_exc()
 
 async def train():
@@ -214,13 +216,10 @@ async def train():
         try:
             for stock in stocks:
                 K.clear_session()
-                if len(stock.prices) == 500 and stock.isStock:
-                    
-                    #Prices used to train and predict next points
-                    prices = []
-                    for i in range(500):
-                        prices.append(stock.prices[i])
+                prices = json.loads(stock.prices)
 
+                if len(prices) == 500 and stock.isStock:
+                    
                     #Prepare data using first 400 points
                     scaler = MinMaxScaler(feature_range=(0, 1))
                     trainPrices = np.array(prices)
@@ -277,55 +276,56 @@ async def train():
                         db.session.commit()
 
         except:
+            print("Train:")
             traceback.print_exc()
 
-stocks = []
-
 if __name__ == '__main__':
-    
-    try:       
-        
-        try:
-            test = File.query.all()
-            db.session.delete(test)
 
-        except:
-            print('Deleting Old-Version Database!')
-
-        try:
-            test = Stock.query.all()
-            db.session.delete(test)
-        
-        except:
-            print('Performing First Time Start Up!')
-
+    try:
+        stocks = Stock.query.all()
+        for stock in stocks:
+            db.session.delete(stock)
         
         db.session.commit()
+
+    except:
+        print('Database Empty!')
+    
+    try:      
         num = 0
         tickers = client.get_all_tickers()
         for ticker in tickers:
             if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
-                test = Stock(symbol=ticker['symbol'], isStock=True)
-                db.session.add(test)
-
+                prices = []
+                predictedPrices = []
+                prices.append(float(0))
+                prices.append(float(0))
+                stock = Stock(symbol=ticker['symbol'], isStock=True, prices=json.dumps(prices), predictedPrices=json.dumps(predictedPrices))           
+                db.session.add(stock)               
                 num = num + 1
             
             if num == numCoins:
                 break
 
         db.session.commit()
-
+        stocks = None
         stocks = Stock.query.all()
         for stock in stocks:
-            if len(stock.prices) < dataPoints:
+            try:
                 candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
                 
+                prices = []
                 for candle in candles:
-                    stock.prices.append(float(candle[3]))
+                    prices.append(float(candle[3]))
 
-                while len(stock.prices) > dataPoints:
-                    stock.prices.pop(0)
-        
+                while len(prices) > dataPoints:
+                    prices.pop(0)
+
+                stock.prices = json.dumps(prices)     
+
+            except:
+                print("Invalid Symbol:" + str(stock.symbol))   
+
         db.session.commit()
 
         t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
@@ -340,4 +340,5 @@ if __name__ == '__main__':
         app.run()
     
     except:
+        print("Start Up:")
         traceback.print_exc()
