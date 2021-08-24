@@ -132,14 +132,6 @@ refreshRate = 300
 #Number of coins you want to track
 numCoins = 100
 
-#Create file from database
-model = None
-try:
-    model = load_model('model.h5')
-
-except: 
-    print('No model')
-
 #Collect data function
 async def collectData():
     await asyncio.sleep(refreshRate)
@@ -176,6 +168,13 @@ async def predictPrice():
                 if stock.isStock:
                 # tf.compat.v1.reset_default_graph()
                     try:
+                        
+                        #Create file from database
+                        with open("model.h5", "wb") as filehandler:
+                            test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
+                            filehandler.write(BytesIO(test.data).read())
+
+                        model = load_model('model.h5')
 
                         scaler = MinMaxScaler(feature_range=(0, 1))
                         prices = np.array(stock.prices).reshape(-1, 1)
