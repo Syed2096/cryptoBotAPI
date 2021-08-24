@@ -58,6 +58,7 @@ class Stock:
 @app.route('/image1', methods=['POST'])
 @cross_origin()
 def image1(): 
+    global stocks
     try:
         coin = json.loads(request.data)
         coin = coin['coin']
@@ -101,6 +102,7 @@ def image1():
 @cross_origin()
 def image2(): 
     
+    global stocks
     try:    
         coin = json.loads(request.data)
         coin = coin['coin']
@@ -150,6 +152,14 @@ refreshRate = 300
 
 #Number of coins you want to track
 numCoins = 100
+
+#Create file from database
+model = None
+try:
+    model = load_model('model.h5')
+
+except: 
+    print('Loading model')
 
 #Collect data function
 async def collectData():
@@ -205,13 +215,6 @@ async def predictPrice():
                 K.clear_session()
                 # tf.compat.v1.reset_default_graph()
                 try:
-                    
-                    #Create file from database
-                    with open("model.h5", "wb") as filehandler:
-                        test = File.query.filter_by(name='model.h5').first()
-                        filehandler.write(BytesIO(test.data).read())
-                    
-                    model = load_model('model.h5')
 
                     scaler = MinMaxScaler(feature_range=(0, 1))
                     prices = np.array(stock.prices).reshape(-1, 1)
@@ -236,15 +239,6 @@ async def predictPrice():
                 # print(stock.symbol + ": " + str(prediction))
                 while len(stock.predictedPrices) > dataPoints:
                     stock.predictedPrices.pop(0) 
-                
-                with open('model.h5', 'rb') as filehandler:
-                    try:
-                        test = File.query.filter_by(name='model.h5').first()
-                        test.data = filehandler.read()
-                    except:
-                        test = File(name='model.h5', data=filehandler.read())
-                
-                    db.session.commit()
 
             end = t.time()                                                
             newRefresh = round(refreshRate - (end - start))
@@ -314,7 +308,7 @@ async def train():
                     #Save file to database
                     with open('model.h5', 'rb') as filehandler:
                         try:
-                            test = File.query.filter_by(name='model.h5')
+                            test = File.query.filter_by(name='model.h5').first()
                             test.data = filehandler.read()
                         except:
                             test = File(name='model.h5', data=filehandler.read())
