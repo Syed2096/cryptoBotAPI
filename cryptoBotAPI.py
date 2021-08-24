@@ -42,58 +42,43 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 #File model
-class File(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False)
+class Stock(db.Model):
+    symbol = db.Column(db.String(100), unique=True, nullable=False, primary_key=True)
+    isStock = db.Column(db.Boolean, nullable=False)
+    prices = db.Column(db.Array(db.Float(500)))
+    predictedPrices = db.Columb(db.Array(db.Float(260)))
     data = db.Column(db.LargeBinary(length=(2**32)-1))
-
-#Stock Object
-class Stock:
-    def __init__(self, symbol):
-        self.symbol = symbol
-        self.prices = []
-        self.predictedPrices = []
 
 # Price and Predictions
 @app.route('/image1', methods=['POST'])
 @cross_origin()
 def image1(): 
-    global stocks
     try:
         coin = json.loads(request.data)
         coin = coin['coin']
-        
-        price = None
-        for stock in stocks:
-            if stock.symbol == str(coin).upper() or stock.symbol == str(coin).upper() + "USDT":
-                price = stock.prices[-1]  
-                predictedPrices = np.array(stock.predictedPrices).reshape(-1)
+        coin = str(coin).upper() + 'USDT'
+        stock = Stock.query.filter_buy(symbol=coin).first()
+        predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
-                #Last 200 points
-                prices = []
-                for i in range(len(stock.prices) - 200, len(stock.prices)):
-                    prices.append(stock.prices[i])
-                
-                #First 200 points
-                predicted = []
-                if len(predictedPrices) >= 200:
-                    for i in range(0, len(predictedPrices) - predictAhead):
-                        predicted.append(predictedPrices[i])
-              
-                plt.style.use('dark_background')   
-                plt.plot(prices, color='white', label=f"Actual {stock.symbol} Price")
-                plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
-                break
-               
-        if price != None:
-            plt.title(str(stock.symbol) + ' Price and Predictions')
-            plt.savefig(fname='plot', transparent=True)
-            plt.clf()
-
-            return send_file('plot.png')
+        #Last 200 points
+        prices = []
+        for i in range(len(stock.prices) - 200, len(stock.prices)):
+            prices.append(stock.prices[i])
         
-        return Response(status=404)
-    
+        #First 200 points
+        predicted = []
+        if len(predictedPrices) >= 200:
+            for i in range(0, len(predictedPrices) - predictAhead):
+                predicted.append(predictedPrices[i])
+        
+        plt.style.use('dark_background')   
+        plt.plot(prices, color='white', label=f"Actual {stock.symbol} Price")
+        plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
+        plt.title(str(stock.symbol) + ' Price and Predictions')
+        plt.savefig(fname='plot', transparent=True)
+        plt.clf()
+        return send_file('plot.png')
+        
     except:
         traceback.print_exc()
         return Response(status=404)
@@ -103,37 +88,26 @@ def image1():
 @cross_origin()
 def image2(): 
     
-    global stocks
     try:    
         coin = json.loads(request.data)
         coin = coin['coin']
-        prediction = None
-        for stock in stocks:
-            
-            if stock.symbol == str(coin).upper() or stock.symbol == str(coin).upper() + "USDT":
-                
-                prediction = stock.predictedPrices[-1]
-                predictedPrices = np.array(stock.predictedPrices).reshape(-1)
+        coin = str(coin).upper() + 'USDT'
+        stock = Stock.query.filter_buy(symbol=coin).first()     
+        predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
-                #Last 60 points
-                if len(predictedPrices) >= predictAhead:
-                    predicted = []
-                    for i in range(len(predictedPrices) - predictAhead, len(predictedPrices)):
-                        predicted.append(predictedPrices[i])
-                
-                else:
-                    predicted = predictedPrices
+        #Last 60 points
+        if len(predictedPrices) >= predictAhead:
+            predicted = []
+            for i in range(len(predictedPrices) - predictAhead, len(predictedPrices)):
+                predicted.append(predictedPrices[i])
+        
+        else:
+            predicted = predictedPrices
 
-                plt.style.use('dark_background')   
-                plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
-                break
-        
-        if prediction != None:
-            plt.tite(str(stock.symbol) + ' Future Predictions')
-            plt.savefig(fname='plot', transparent=True)
-            return send_file('plot.png')
-        
-        return Response(status=404)
+        plt.style.use('dark_background')   
+        plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
+        plt.savefig(fname='plot', transparent=True)
+        return send_file('plot.png')
 
     except:
         traceback.print_exc()
@@ -157,7 +131,7 @@ try:
     model = load_model('model.h5')
 
 except: 
-    print('Loading model')
+    print('No model')
 
 #Collect data function
 async def collectData():
@@ -165,37 +139,18 @@ async def collectData():
     while True:
         try:                        
             start = t.time()
-            
-            #Create file from database
-            with open("crypto.txt", "wb") as filehandler:
-                test = File.query.filter_by(name='crypto.txt').first()
-                filehandler.write(BytesIO(test.data).read())
-            
-            #Create text file that reads new file
-            with open("crypto.txt", 'rb') as filehandler:
-                stocks = pickle.load(filehandler)
-                for stock in stocks:
-                    while len(stock.prices) > dataPoints:
-                        stock.prices.pop(0)
-
-            # tickers = client.get_all_tickers()
+            stocks = Stock.query.all()
+            tickers = client.get_all_tickers()
             #Fill information till there are enough data points
             for stock in stocks:
-                ticker = client.get_symbol_ticker(symbol=stock.symbol)
-                stock.prices.append(float(ticker['price']))
-                while len(stock.prices) > dataPoints:
-                    stock.prices.pop(0)
+                for ticker in tickers:
+                    if ticker['symbol'] == stock.symbol:
+                        stock.prices.append(float(ticker['price']))
+                        while len(stock.prices) > dataPoints:
+                            stock.prices.pop(0)
+                        break
             
-            #Write information into file
-            with open("crypto.txt", "wb") as filehandler:
-                pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
-
-            with open('crypto.txt', 'rb') as filehandler:
-                #Update data
-                test = File.query.filter_by(name='crypto.txt').first()
-                test.data = filehandler.read()
-                db.session.commit()
-
+            db.session.commit()
             end = t.time()                              
             newRefresh = round(refreshRate - (end - start))
             
@@ -211,32 +166,33 @@ async def predictPrice():
             start = t.time()               
             for stock in stocks:
                 K.clear_session()
+                if stock.isStock:
                 # tf.compat.v1.reset_default_graph()
-                try:
+                    try:
 
-                    scaler = MinMaxScaler(feature_range=(0, 1))
-                    prices = np.array(stock.prices).reshape(-1, 1)
-                    scaler = scaler.fit(prices)
-                    total_dataset = stock.prices
+                        scaler = MinMaxScaler(feature_range=(0, 1))
+                        prices = np.array(stock.prices).reshape(-1, 1)
+                        scaler = scaler.fit(prices)
+                        total_dataset = stock.prices
 
-                    model_inputs = np.array(total_dataset[len(total_dataset) - predictionRequired:]).reshape(-1, 1)
-                    model_inputs = scaler.transform(model_inputs)
+                        model_inputs = np.array(total_dataset[len(total_dataset) - predictionRequired:]).reshape(-1, 1)
+                        model_inputs = scaler.transform(model_inputs)
 
-                    #Predict Next period
-                    real_data = [model_inputs[len(model_inputs) - predictionRequired:len(model_inputs), 0]]
-                    real_data = np.array(real_data)
-                    real_data = np.reshape(real_data, (real_data.shape[0], real_data.shape[1], 1))
+                        #Predict Next period
+                        real_data = [model_inputs[len(model_inputs) - predictionRequired:len(model_inputs), 0]]
+                        real_data = np.array(real_data)
+                        real_data = np.reshape(real_data, (real_data.shape[0], real_data.shape[1], 1))
 
-                    prediction = model.predict(real_data)
-                    prediction = scaler.inverse_transform(prediction)
+                        prediction = model.predict(real_data)
+                        prediction = scaler.inverse_transform(prediction)
 
-                except:
-                    prediction = 0  
-                
-                stock.predictedPrices.append(prediction)
-                print(stock.symbol + ": " + str(prediction))
-                while len(stock.predictedPrices) > dataPoints:
-                    stock.predictedPrices.pop(0) 
+                    except:
+                        prediction = 0  
+                    
+                    stock.predictedPrices.append(prediction)
+                    print(stock.symbol + ": " + str(prediction))
+                    while len(stock.predictedPrices) > dataPoints:
+                        stock.predictedPrices.pop(0) 
 
             end = t.time()                                                
             newRefresh = round(refreshRate - (end - start))
@@ -252,7 +208,7 @@ async def train():
         try:
             for stock in stocks:
                 K.clear_session()
-                if len(stock.prices) == 500:
+                if len(stock.prices) == 500 and stock.isStock:
                     
                     #Prices used to train and predict next points
                     prices = []
@@ -277,7 +233,7 @@ async def train():
                     try:
                         #Create file from database
                         with open("model.h5", "wb") as filehandler:
-                            test = File.query.filter_by(name='model.h5').first()
+                            test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
                             filehandler.write(BytesIO(test.data).read())
 
                         model = load_model('model.h5')
@@ -306,53 +262,14 @@ async def train():
                     #Save file to database
                     with open('model.h5', 'rb') as filehandler:
                         try:
-                            test = File.query.filter_by(name='model.h5').first()
+                            test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
                             test.data = filehandler.read()
                         except:
-                            test = File(name='model.h5', data=filehandler.read())
+                            test = Stock(symbol=str(stock.symbol) +'Model.h5', data=filehandler.read(), isStock=False)
+                            db.session.add(test)
                         
                         db.session.commit()
 
-                    # #Get prices to predict data
-                    # prices = []
-                    # for i in range(0, 400 - predictAhead):
-                    #     prices.append(stock.prices[i])
-
-                    # predictedPrices = []
-                    # #Get predicted prices for points 400 - 500
-                    # for i in range(400 - predictAhead + 1, 500 - predictAhead):
-                    #     scaler = MinMaxScaler(feature_range=(0, 1))
-                    #     predictPrices = np.array(prices).reshape(-1, 1)
-                    #     scaler = scaler.fit(predictPrices)
-                    #     total_dataset = predictPrices
-
-                    #     model_inputs = np.array(total_dataset[len(total_dataset) - predictionRequired:]).reshape(-1, 1)
-                    #     model_inputs = scaler.transform(model_inputs)
-
-                    #     #Predict Next period
-                    #     real_data = [model_inputs[len(model_inputs) - predictionRequired:len(model_inputs), 0]]
-                    #     real_data = np.array(real_data)
-                    #     real_data = np.reshape(real_data, (real_data.shape[0], real_data.shape[1], 1))
-
-                    #     prediction = model.predict(real_data)
-                    #     prediction = scaler.inverse_transform(prediction)
-                    #     predictedPrices.append(prediction)
-                    #     prices.append(stock.prices[i])
-
-                    # #Get actual prices for stocks used for result
-                    # actualPrices = []
-                    # for i in range(400, 500):
-                    #     actualPrices.append(float(stock.prices[i]))
-                    
-                    # actualPrices = np.reshape(actualPrices, -1)
-                    # predictedPrices = np.reshape(predictedPrices, -1)
-                    
-                    # plt.style.use('dark_background')   
-                    # plt.plot(actualPrices, color='white')
-                    # plt.plot(predictedPrices, color='green')
-                    # plt.title(str(stock.symbol))
-                    # # plt.savefig("./plots/"+ str(stock.symbol) + ".png", transparent=True)
-                    # plt.clf()
         except:
             traceback.print_exc()
 
@@ -361,32 +278,30 @@ stocks = []
 if __name__ == '__main__':
     
     try:       
-        try:
-            test = File.query.filter_by(name='crypto.txt').first()
-            db.session.delete(test)
-            db.session.commit()
-
-        except:
-            print('Database empty')
         
         try:
-            test = File.query.filter_by(name='model.h5').first()
+            test = Stock.query.all()
             db.session.delete(test)
             db.session.commit()
         
         except:
-            print('No Model')
+            print('Performing First Time Start Up!')
 
         num = 0
         tickers = client.get_all_tickers()
         for ticker in tickers:
             if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
-                stocks.append(Stock(ticker['symbol']))
+                test = Stock(symbol=ticker['symbol'], isStock=True)
+                db.session.add(test)
+
                 num = num + 1
             
             if num == numCoins:
                 break
 
+        db.session.commit()
+
+        stocks = Stock.query.all()
         for stock in stocks:
             if len(stock.prices) < dataPoints:
                 candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
@@ -396,14 +311,8 @@ if __name__ == '__main__':
 
                 while len(stock.prices) > dataPoints:
                     stock.prices.pop(0)
-
-        with open("crypto.txt", "wb") as filehandler:
-            pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
-
-        with open("crypto.txt", "rb") as filehandler:
-            test = File(name="crypto.txt", data=filehandler.read())
-            db.session.add(test)
-            db.session.commit()
+        
+        db.session.commit()
 
         t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
         t1.setDaemon(True)
