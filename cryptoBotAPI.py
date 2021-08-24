@@ -26,7 +26,7 @@ from io import BytesIO
 
 APIKEY = os.getenv('APIKEY')
 APISECRET = os.getenv('APISECRET')
-URI = os.getenv('CLEARDB_DATABASE_URL')
+URI = os.getenv('DATABASE_URL')
 
 # physical_devices = tf.config.list_physical_devices("GPU")
 # tf.config.experimental.set_memory_growth(physical_devices[0], False)
@@ -36,8 +36,8 @@ client = Client(APIKEY, APISECRET)
 
 #Create flask app
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = URI
-# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
+# app.config["SQLALCHEMY_DATABASE_URI"] = URI
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
@@ -106,8 +106,7 @@ def image2():
     try:    
         coin = json.loads(request.data)
         coin = coin['coin']
-        print(str(coin).upper())
-        prediction = False
+        # print(str(coin).upper())
         for stock in stocks:
             
             if str(stock.symbol) == str(coin).upper() or str(stock.symbol) == str(coin).upper() + "USDT":
