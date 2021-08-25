@@ -313,7 +313,7 @@ if __name__ == '__main__':
             if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
                 test = []
                 test.append(0)
-                stock = Stock(symbol=ticker['symbol'], isStock=True, predictPrices=str(json.dumps(test)))
+                stock = Stock(symbol=ticker['symbol'], isStock=True, predictedPrices=str(json.dumps(test)))
                 db.session.add(stock)
                 db.session.commit()          
                 num = num + 1
