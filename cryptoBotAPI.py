@@ -43,10 +43,10 @@ db = SQLAlchemy(app)
 
 #File model
 class Stock(db.Model):
-    symbol = db.Column(db.String(100), unique=True, nullable=False, primary_key=True)
+    symbol = db.Column(db.String(10), unique=True, nullable=False, primary_key=True)
     isStock = db.Column(db.Boolean, nullable=False)
-    prices = db.Column(db.Float(500))
-    predictedPrices = db.Column(db.Float(260))
+    prices = db.Column(db.String(500))
+    predictedPrices = db.Column(db.Float(500))
     data = db.Column(db.LargeBinary(length=(2**32)-1))
 
 # Price and Predictions
@@ -58,9 +58,9 @@ def image1():
         coin = coin['coin']
         coin = str(coin).upper() + 'USDT'
         stock = Stock.query.filter_by(symbol=coin).first()
-        prices = json.loads(stock.prices)
-        predictedPrices = json.loads(stock.predictedPrices)
-        predictedPrices = np.array(stock.predictedPrices).reshape(-1)
+        prices = json.loads(str(stock.prices))
+        predictedPrices = json.loads(str(stock.predictedPrices))
+        # predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
         #Last 200 points
         for i in range(len(prices) - 200, len(prices)):
@@ -94,7 +94,9 @@ def image2():
         coin = coin['coin']
         coin = str(coin).upper() + 'USDT'
         stock = Stock.query.filter_by(symbol=coin).first()   
-        predictedPrices = json.loads(stock.predictedPrices)  
+        predictedPrices = json.loads(str(stock.predictedPrices))  
+        # predictedPrices = stock.predictedPrices
+
         predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
         #Last 60 points
@@ -137,14 +139,17 @@ async def collectData():
             tickers = client.get_all_tickers()
             #Fill information till there are enough data points
             for stock in stocks:
-                prices = json.loads(stock.prices)
+                prices = str(json.loads(stock.prices))
+                # prices = stock.prices
                 for ticker in tickers:
                     if ticker['symbol'] == stock.symbol:
                         prices.append(float(ticker['price']))
-                        while len(stock.prices) > dataPoints:
+                        while len(prices) > dataPoints:
                            prices.pop(0)
                         break
-            
+                
+                stock.prices = str(json.dumps(prices))
+
             db.session.commit()
             end = t.time()                              
             newRefresh = round(refreshRate - (end - start))
@@ -159,15 +164,23 @@ async def collectData():
 async def predictPrice():
     while True: 
         try: 
-            start = t.time()               
+            start = t.time()   
+            stocks = Stock.query.all()            
             for stock in stocks:
                 K.clear_session()
                 if stock.isStock:
-                # tf.compat.v1.reset_default_graph()
-                    prices = json.loads(stock.prices)
-                    predictedPrices = json.loads(stock.predictedPrices)
+                    # prices = stock.prices
+                    # predictedPrices = stock.predictedPrices
+                    prices = json.loads(str(stock.prices))
+
                     try:
-                        
+                        predictedPrices = json.loads(str(stock.predictedPrices))
+                    
+                    except:
+                        predictedPrices = []
+
+                    try:   
+
                         #Create file from database
                         with open("model.h5", "wb") as filehandler:
                             test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
@@ -199,7 +212,8 @@ async def predictPrice():
                     while len(predictedPrices) > dataPoints:
                         predictedPrices.pop(0) 
                     
-                    stock.predictedPrices = json.dumps(predictedPrices)
+                    stock.predictedPrices = str(json.dumps(predictedPrices))
+                    # stock.predictedPrices = predictedPrices
             
             db.session.commit()            
 
@@ -216,10 +230,11 @@ async def predictPrice():
 async def train():
     while True:
         try:
+            stocks = Stock.query.all()
             for stock in stocks:
                 K.clear_session()
-                prices = json.loads(stock.prices)
-
+                prices = json.loads(str(stock.prices))
+                # prices = stock.prices
                 if len(prices) == 500 and stock.isStock:
                     
                     #Prepare data using first 400 points
@@ -284,33 +299,25 @@ async def train():
 if __name__ == '__main__':
 
     try:
-        stocks = Stock.query.all()
-        for stock in stocks:
-            db.session.delete(stock)
-        
+        db.session.query(Stock).delete()
         db.session.commit()
-
-    except:
-        print('Database Empty!')
     
+    except:
+        print("Database Empty!")
+
     try:      
         num = 0
         tickers = client.get_all_tickers()
         for ticker in tickers:
             if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
-                prices = []
-                predictedPrices = []
-                prices.append(float(0))
-                prices.append(float(0))
-                stock = Stock(symbol=ticker['symbol'], isStock=True, prices=json.dumps(prices), predictedPrices=json.dumps(predictedPrices))           
-                db.session.add(stock)               
+                stock = Stock(symbol=ticker['symbol'], isStock=True)
+                db.session.add(stock)
+                db.session.commit()          
                 num = num + 1
-            
+
             if num == numCoins:
                 break
-
-        db.session.commit()
-        stocks = None
+            
         stocks = Stock.query.all()
         for stock in stocks:
             try:
@@ -323,12 +330,13 @@ if __name__ == '__main__':
                 while len(prices) > dataPoints:
                     prices.pop(0)
 
-                stock.prices = json.dumps(prices)     
+                stock.prices = json.dumps(prices)    
+                # stock.prices = prices
 
             except:
-                print("Invalid Symbol:" + str(stock.symbol))   
-
-        db.session.commit()
+                print("Invalid Symbol:" + str(stock.symbol))       
+        
+        db.session.commit() 
 
         t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
         t1.setDaemon(True)
