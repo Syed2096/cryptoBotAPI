@@ -311,7 +311,9 @@ if __name__ == '__main__':
         tickers = client.get_all_tickers()
         for ticker in tickers:
             if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
-                stock = Stock(symbol=ticker['symbol'], isStock=True)
+                test = []
+                test.append(0)
+                stock = Stock(symbol=ticker['symbol'], isStock=True, predictPrices=str(json.dumps(test)))
                 db.session.add(stock)
                 db.session.commit()          
                 num = num + 1
@@ -327,9 +329,8 @@ if __name__ == '__main__':
                 prices = []
                 for candle in candles:
                     prices.append(float(candle[3]))
-
-                while len(prices) > dataPoints:
-                    prices.pop(0)
+                    while len(prices) > dataPoints:
+                        prices.pop(0)
 
                 stock.prices = str(json.dumps(prices))    
                 db.session.commit() 
