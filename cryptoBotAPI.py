@@ -109,7 +109,7 @@ def image2():
 
         plt.style.use('dark_background')   
         plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
-        plt.title(str(stock.symbol) + ' Future and Predictions')
+        plt.title(str(stock.symbol) + ' Future Predictions')
         plt.savefig(fname='plot2', transparent=True)
         return send_file('plot2.png')
 
