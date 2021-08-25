@@ -171,7 +171,6 @@ async def predictPrice():
                 if stock.isStock:
                     # prices = stock.prices
                     # predictedPrices = stock.predictedPrices
-                    prices = json.loads(str(stock.prices))
 
                     try:
                         predictedPrices = json.loads(str(stock.predictedPrices))
@@ -180,6 +179,8 @@ async def predictPrice():
                         predictedPrices = []
 
                     try:   
+                        
+                        prices = json.loads(str(stock.prices))
 
                         #Create file from database
                         with open("model.h5", "wb") as filehandler:
