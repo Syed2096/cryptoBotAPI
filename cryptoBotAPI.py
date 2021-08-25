@@ -332,12 +332,10 @@ if __name__ == '__main__':
                     prices.pop(0)
 
                 stock.prices = json.dumps(prices)    
-                # stock.prices = prices
+                db.session.commit() 
 
             except:
                 print("Invalid Symbol:" + str(stock.symbol))       
-        
-        db.session.commit() 
 
         t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
         t1.setDaemon(True)
