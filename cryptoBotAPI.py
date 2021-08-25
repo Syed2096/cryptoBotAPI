@@ -76,9 +76,9 @@ def image1():
         plt.plot(prices, color='white', label=f"Actual {stock.symbol} Price")
         plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
         plt.title(str(stock.symbol) + ' Price and Predictions')
-        plt.savefig(fname='plot', transparent=True)
+        plt.savefig(fname='plot1', transparent=True)
         plt.clf()
-        return send_file('plot.png')
+        return send_file('plot1.png')
         
     except:
         traceback.print_exc()
@@ -110,8 +110,8 @@ def image2():
 
         plt.style.use('dark_background')   
         plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
-        plt.savefig(fname='plot', transparent=True)
-        return send_file('plot.png')
+        plt.savefig(fname='plot2', transparent=True)
+        return send_file('plot2.png')
 
     except:
         traceback.print_exc()
@@ -257,7 +257,7 @@ async def train():
                         #Create file from database
                         with open("model.h5", "wb") as filehandler:
                             test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
-                            filehandler.write(BytesIO(test.data).read())
+                            filehandler.write(BytesIO(test.data))
 
                         model = load_model('model.h5')
 
