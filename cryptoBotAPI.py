@@ -107,7 +107,9 @@ def image2():
                 predicted.append(predictedPrices[i])
         
         else:
-            predicted = predictedPrices
+            predicted = []
+            for price in predictedPrices:
+                predicted.append(price)
 
         plt.style.use('dark_background')   
         plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
