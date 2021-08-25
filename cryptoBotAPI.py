@@ -58,13 +58,14 @@ def image1():
         coin = coin['coin']
         coin = str(coin).upper() + 'USDT'
         stock = Stock.query.filter_by(symbol=str(coin)).first()
-        prices = json.loads(str(stock.prices))
+        stockPrices = json.loads(str(stock.prices))
         predictedPrices = json.loads(str(stock.predictedPrices))
         # predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
         #Last 200 points
-        for i in range(len(prices) - 200, len(prices)):
-            prices.append(prices[i])
+        prices = []
+        for i in range(len(stockPrices) - 200, len(stockPrices)):
+            prices.append(stockPrices[i])
         
         #First 200 points
         predicted = []
@@ -110,6 +111,7 @@ def image2():
 
         plt.style.use('dark_background')   
         plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
+        plt.title(str(stock.symbol) + ' Future and Predictions')
         plt.savefig(fname='plot2', transparent=True)
         return send_file('plot2.png')
 
