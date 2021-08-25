@@ -45,8 +45,8 @@ db = SQLAlchemy(app)
 class Stock(db.Model):
     symbol = db.Column(db.String(10), unique=True, nullable=False, primary_key=True)
     isStock = db.Column(db.Boolean, nullable=False)
-    prices = db.Column(db.String(500))
-    predictedPrices = db.Column(db.Float(500))
+    prices = db.Column(db.String(10000))
+    predictedPrices = db.Column(db.String(10000))
     data = db.Column(db.LargeBinary(length=(2**32)-1))
 
 # Price and Predictions
@@ -57,7 +57,7 @@ def image1():
         coin = json.loads(request.data)
         coin = coin['coin']
         coin = str(coin).upper() + 'USDT'
-        stock = Stock.query.filter_by(symbol=coin).first()
+        stock = Stock.query.filter_by(symbol=str(coin)).first()
         prices = json.loads(str(stock.prices))
         predictedPrices = json.loads(str(stock.predictedPrices))
         # predictedPrices = np.array(stock.predictedPrices).reshape(-1)
@@ -93,7 +93,7 @@ def image2():
         coin = json.loads(request.data)
         coin = coin['coin']
         coin = str(coin).upper() + 'USDT'
-        stock = Stock.query.filter_by(symbol=coin).first()   
+        stock = Stock.query.filter_by(symbol=str(coin)).first()   
         predictedPrices = json.loads(str(stock.predictedPrices))  
         # predictedPrices = stock.predictedPrices
 
@@ -209,7 +209,7 @@ async def predictPrice():
                         prediction = 0  
                     
                     predictedPrices.append(prediction)
-                    print(stock.symbol + ": " + str(prediction))
+                    # print(stock.symbol + ": " + str(prediction))
                     while len(predictedPrices) > dataPoints:
                         predictedPrices.pop(0) 
                     
