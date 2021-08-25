@@ -331,7 +331,7 @@ if __name__ == '__main__':
                 while len(prices) > dataPoints:
                     prices.pop(0)
 
-                stock.prices = json.dumps(prices)    
+                stock.prices = str(json.dumps(prices))    
                 db.session.commit() 
 
             except:
@@ -346,6 +346,7 @@ if __name__ == '__main__':
         t3 = threading.Thread(target=asyncio.run, args=(train(),))
         t3.setDaemon(True)
         t3.start()
+        print("Starting")
         app.run()
     
     except:
