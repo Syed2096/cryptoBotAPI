@@ -66,6 +66,7 @@ def image1():
         prices = []
         for i in range(len(stockPrices) - 200, len(stockPrices)):
             prices.append(stockPrices[i])
+            print(prices[i])
         
         #First 200 points
         predicted = []
@@ -97,9 +98,7 @@ def image2():
         stock = Stock.query.filter_by(symbol=str(coin)).first()   
         predictedPrices = json.loads(str(stock.predictedPrices))  
         # predictedPrices = stock.predictedPrices
-
-        predictedPrices = np.array(stock.predictedPrices).reshape(-1)
-
+        
         #Last 60 points
         if len(predictedPrices) >= predictAhead:
             predicted = []
