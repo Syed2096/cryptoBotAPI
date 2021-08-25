@@ -98,7 +98,7 @@ def image2():
         stock = Stock.query.filter_by(symbol=str(coin)).first()   
         predictedPrices = json.loads(str(stock.predictedPrices))  
         # predictedPrices = stock.predictedPrices
-        
+
         #Last 60 points
         if len(predictedPrices) >= predictAhead:
             predicted = []
@@ -106,9 +106,7 @@ def image2():
                 predicted.append(predictedPrices[i])
         
         else:
-            predicted = []
-            for price in predictedPrices:
-                predicted.append(price)
+            predicted = predictedPrices
 
         plt.style.use('dark_background')   
         plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
