@@ -139,7 +139,7 @@ async def collectData():
             tickers = client.get_all_tickers()
             #Fill information till there are enough data points
             for stock in stocks:
-                prices = str(json.loads(stock.prices))
+                prices = json.loads(stock.prices)
                 # prices = stock.prices
                 for ticker in tickers:
                     if ticker['symbol'] == stock.symbol:
@@ -149,8 +149,8 @@ async def collectData():
                         break
                 
                 stock.prices = str(json.dumps(prices))
+                db.session.commit()
 
-            db.session.commit()
             end = t.time()                              
             newRefresh = round(refreshRate - (end - start))
             
