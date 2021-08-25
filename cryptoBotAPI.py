@@ -346,7 +346,7 @@ if __name__ == '__main__':
         t3 = threading.Thread(target=asyncio.run, args=(train(),))
         t3.setDaemon(True)
         t3.start()
-        print("Starting")
+        # print("Starting")
         app.run()
     
     except:
