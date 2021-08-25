@@ -66,7 +66,6 @@ def image1():
         prices = []
         for i in range(len(stockPrices) - 200, len(stockPrices)):
             prices.append(stockPrices[i])
-            print(prices[i])
         
         #First 200 points
         predicted = []
