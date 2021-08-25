@@ -216,7 +216,7 @@ async def predictPrice():
                     stock.predictedPrices = str(json.dumps(predictedPrices))
                     # stock.predictedPrices = predictedPrices
             
-            db.session.commit()            
+                    db.session.commit()            
 
             end = t.time()                                                
             newRefresh = round(refreshRate - (end - start))
