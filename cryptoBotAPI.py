@@ -204,8 +204,8 @@ async def predictPrice():
                         prediction = scaler.inverse_transform(prediction)
 
                     except:
-                        print("-----------------------------------------------------------------------")
-                        traceback.print_exc()
+                        # print("-----------------------------------------------------------------------")
+                        # traceback.print_exc()
                         prediction = 0  
                     
                     predictedPrices.append(float(prediction))
