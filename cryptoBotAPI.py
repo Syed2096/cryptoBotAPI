@@ -2,9 +2,9 @@
 from flask import Flask, request, send_file, Response
 from binance.client import Client
 from flask_cors.decorator import cross_origin
+from numpy.core.fromnumeric import trace
 from tensorflow.python.keras.callbacks import EarlyStopping
 import asyncio
-import pickle
 import os
 import matplotlib
 matplotlib.use('Agg')
@@ -22,7 +22,6 @@ import time as t
 import json
 import traceback
 from flask_sqlalchemy import SQLAlchemy
-from io import BytesIO
 
 APIKEY = os.getenv('APIKEY')
 APISECRET = os.getenv('APISECRET')
@@ -36,14 +35,14 @@ client = Client(APIKEY, APISECRET)
 
 #Create flask app
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = URI
-# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
+# app.config["SQLALCHEMY_DATABASE_URI"] = URI
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 #File model
 class Stock(db.Model):
-    symbol = db.Column(db.String(10), unique=True, nullable=False, primary_key=True)
+    symbol = db.Column(db.String(50), unique=True, nullable=False, primary_key=True)
     isStock = db.Column(db.Boolean, nullable=False)
     prices = db.Column(db.String(10000))
     predictedPrices = db.Column(db.String(10000))
@@ -64,7 +63,7 @@ def image1():
 
         #Last 200 points
         prices = []
-        for i in range(len(stockPrices) - 200, len(stockPrices)):
+        for i in range(len(stockPrices) - predictionRequired, len(stockPrices)):
             prices.append(stockPrices[i])
         
         #First 200 points
@@ -99,8 +98,8 @@ def image2():
         # predictedPrices = stock.predictedPrices
 
         #Last 60 points
+        predicted = []
         if len(predictedPrices) >= predictAhead:
-            predicted = []
             for i in range(len(predictedPrices) - predictAhead, len(predictedPrices)):
                 predicted.append(predictedPrices[i])
         
@@ -127,7 +126,7 @@ dataPoints = 500
 refreshRate = 300
 
 #Number of coins you want to track
-numCoins = 100
+numCoins = 10
 
 #Collect data function
 async def collectData():
@@ -139,17 +138,18 @@ async def collectData():
             tickers = client.get_all_tickers()
             #Fill information till there are enough data points
             for stock in stocks:
-                prices = json.loads(stock.prices)
-                # prices = stock.prices
-                for ticker in tickers:
-                    if ticker['symbol'] == stock.symbol:
-                        prices.append(float(ticker['price']))
-                        while len(prices) > dataPoints:
-                           prices.pop(0)
-                        break
+                if stock.isStock == True:
+                    prices = json.loads(str(stock.prices))
+                    # prices = stock.prices
+                    for ticker in tickers:
+                        if ticker['symbol'] == stock.symbol:
+                            prices.append(float(ticker['price']))
+                            while len(prices) > dataPoints:
+                                prices.pop(0)
+                            break
                 
-                stock.prices = str(json.dumps(prices))
-                db.session.commit()
+                    stock.prices = str(json.dumps(prices))
+                    db.session.commit()
 
             end = t.time()                              
             newRefresh = round(refreshRate - (end - start))
@@ -164,15 +164,14 @@ async def collectData():
 async def predictPrice():
     while True: 
         try: 
-            start = t.time()   
-            stocks = Stock.query.all()            
+            start = t.time()  
+            stocks = Stock.query.all()
             for stock in stocks:
                 K.clear_session()
-                if stock.isStock:
-                    # prices = stock.prices
-                    # predictedPrices = stock.predictedPrices
+                # prices = stock.prices
+                # predictedPrices = stock.predictedPrices
+                if stock.isStock == True:
                     try:   
-                        
                         prices = json.loads(str(stock.prices))
 
                         try:
@@ -180,19 +179,18 @@ async def predictPrice():
                     
                         except:
                             predictedPrices = []
-
-
+                        
                         #Create file from database
-                        with open("model.h5", "wb") as filehandler:
+                        with open('model.h5', "wb") as filehandler:
                             test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
-                            filehandler.write(BytesIO(test.data))
-
+                            filehandler.write(test.data)
+                        
                         model = load_model('model.h5')
 
                         scaler = MinMaxScaler(feature_range=(0, 1))
-                        prices = np.array(stock.prices).reshape(-1, 1)
+                        prices = np.array(prices).reshape(-1, 1)
                         scaler = scaler.fit(prices)
-                        total_dataset = stock.prices
+                        total_dataset = prices
 
                         model_inputs = np.array(total_dataset[len(total_dataset) - predictionRequired:]).reshape(-1, 1)
                         model_inputs = scaler.transform(model_inputs)
@@ -206,17 +204,18 @@ async def predictPrice():
                         prediction = scaler.inverse_transform(prediction)
 
                     except:
+                        print("-----------------------------------------------------------------------")
+                        traceback.print_exc()
                         prediction = 0  
                     
-                    predictedPrices.append(prediction)
-                    # print(stock.symbol + ": " + str(prediction))
+                    predictedPrices.append(float(prediction))
+                    print(stock.symbol + ": " + str(prediction))
                     while len(predictedPrices) > dataPoints:
                         predictedPrices.pop(0) 
                     
+                    #This line needs to be fixed: ndarray is not JSON serializable
                     stock.predictedPrices = str(json.dumps(predictedPrices))
-                    # stock.predictedPrices = predictedPrices
-            
-                    db.session.commit()            
+                    db.session.commit()                 
 
             end = t.time()                                                
             newRefresh = round(refreshRate - (end - start))
@@ -234,71 +233,67 @@ async def train():
             stocks = Stock.query.all()
             for stock in stocks:
                 K.clear_session()
-                prices = json.loads(str(stock.prices))
+                if stock.isStock == True:
+                    prices = json.loads(str(stock.prices))
                 # prices = stock.prices
-                if len(prices) == 500 and stock.isStock:
-                    
-                    #Prepare data using first 400 points
-                    scaler = MinMaxScaler(feature_range=(0, 1))
-                    trainPrices = np.array(prices)
-                    scaled_data = scaler.fit_transform(trainPrices.reshape(-1, 1))
-
-                    x_train = []
-                    y_train = []
-
-                    for x in range(predictionRequired, len(scaled_data) - predictAhead):
-                        x_train.append(scaled_data[x - predictionRequired:x, 0])
-                        y_train.append(scaled_data[x + predictAhead, 0])
-
-                    x_train, y_train = np.array(x_train), np.array(y_train)
-                    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+                    if len(prices) == 500:
                         
-                    try:
-                        #Create file from database
-                        with open("model.h5", "wb") as filehandler:
-                            test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
-                            filehandler.write(BytesIO(test.data))
+                        #Prepare data using first 400 points
+                        scaler = MinMaxScaler(feature_range=(0, 1))
+                        trainPrices = np.array(prices)
+                        scaled_data = scaler.fit_transform(trainPrices.reshape(-1, 1))
 
-                        model = load_model('model.h5')
+                        x_train = []
+                        y_train = []
 
-                    except:    
-                        #Build model
-                        model = Sequential()
+                        for x in range(predictionRequired, len(scaled_data) - predictAhead):
+                            x_train.append(scaled_data[x - predictionRequired:x, 0])
+                            y_train.append(scaled_data[x + predictAhead, 0])
 
-                        #Experiment with layers, more layers longer time to train
-                        model.add(LSTM(units=50, return_sequences=True, input_shape=(x_train.shape[1], 1)))
-                        model.add(Dropout(0.2))
-                        model.add(LSTM(units=50, return_sequences=True))
-                        model.add(Dropout(0.2))
-                        model.add(LSTM(units=50))
-                        model.add(Dropout(0.2))
-                        model.add(Dense(units=1)) #Prediction of next closing value
-
-                        model.compile(optimizer='adam', loss='mean_squared_error')
-                        #Epoch = how many times model sees data, batchsize = how many units it sees at once
-
-                    callbacks = [EarlyStopping(monitor='val_loss', patience=100)]          
-                    model.fit(x_train, y_train, epochs=1000, validation_split=0.2, callbacks=callbacks)
-                    # model.fit(x_train, y_train, epochs=1000)
-                    model.save('model.h5')
-
-                    #Save file to database
-                    with open('model.h5', 'rb') as filehandler:
+                        x_train, y_train = np.array(x_train), np.array(y_train)
+                        x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+                            
                         try:
-                            test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
-                            test.data = filehandler.read()
-                        except:
-                            test = Stock(symbol=str(stock.symbol) +'Model.h5', data=filehandler.read(), isStock=False)
-                            db.session.add(test)
-                        
-                        db.session.commit()
+                            
+                            #Create file from database
+                            with open('model.h5', "wb") as filehandler:
+                                test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
+                                filehandler.write(test.data)
 
+                            model = load_model('model.h5')
+
+                        except:    
+                            #Build model
+                            model = Sequential()
+
+                            #Experiment with layers, more layers longer time to train
+                            model.add(LSTM(units=50, return_sequences=True, input_shape=(x_train.shape[1], 1)))
+                            model.add(Dropout(0.2))
+                            model.add(LSTM(units=50, return_sequences=True))
+                            model.add(Dropout(0.2))
+                            model.add(LSTM(units=50))
+                            model.add(Dropout(0.2))
+                            model.add(Dense(units=1)) #Prediction of next closing value
+
+                            model.compile(optimizer='adam', loss='mean_squared_error')
+                            #Epoch = how many times model sees data, batchsize = how many units it sees at once
+
+                        callbacks = [EarlyStopping(monitor='val_loss', patience=100)]          
+                        model.fit(x_train, y_train, epochs=1000, validation_split=0.2, callbacks=callbacks)
+                        # model.fit(x_train, y_train, epochs=1000)
+                        model.save('model.h5')
+                        
+                        #Save file to database
+                        with open('model.h5', 'rb') as filehandler:
+                            test = Stock(symbol=str(stock.symbol) + 'Model.h5', data=filehandler.read(), isStock=False)
+                            db.session.merge(test)
+                            db.session.commit()
+                            
         except:
             print("Train:")
             traceback.print_exc()
 
 if __name__ == '__main__':
-
     try:
         db.session.query(Stock).delete()
         db.session.commit()
@@ -320,7 +315,7 @@ if __name__ == '__main__':
 
             if num == numCoins:
                 break
-            
+        
         stocks = Stock.query.all()
         for stock in stocks:
             try:
