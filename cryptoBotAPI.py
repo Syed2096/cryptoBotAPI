@@ -36,7 +36,7 @@ client = Client(APIKEY, APISECRET)
 #Create flask app
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = URI
-app.configp['SQLALCHEMY_POOL_RECYCLE'] = 60
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 60
 # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
@@ -99,16 +99,16 @@ def image2():
         # predictedPrices = stock.predictedPrices
 
         #Last 60 points
-        predicted = []
+        predicted2 = []
         if len(predictedPrices) >= predictAhead:
             for i in range(len(predictedPrices) - predictAhead, len(predictedPrices)):
-                predicted.append(predictedPrices[i])
+                predicted2.append(predictedPrices[i])
         
         else:
-            predicted = predictedPrices
+            predicted2 = predictedPrices
 
         plt.style.use('dark_background')   
-        plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
+        plt.plot(predicted2, color='green', label=f"Predicted {stock.symbol} Price")
         plt.title(str(stock.symbol) + ' Future Predictions')
         plt.savefig(fname='plot2', transparent=True)
         return send_file('plot2.png')
