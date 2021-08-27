@@ -344,7 +344,7 @@ if __name__ == '__main__':
         t3.setDaemon(True)
         t3.start()
         # print("Starting")
-        # app.run()
+        app.run()
     
     except:
         print("Start Up:")
