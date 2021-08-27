@@ -1,2 +1,2 @@
-web: python cryptoBotAPI.py
+web: gunicorn cryptoBotAPI:app
 worker: python cryptoBot.py
