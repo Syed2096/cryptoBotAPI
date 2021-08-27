@@ -1,1 +1,1 @@
-web: gunicorn cryptoBotAPI:app --workers 5
+web: gunicorn cryptoBotAPI:app --workers 5 --daemon
