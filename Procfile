@@ -1,2 +1,2 @@
-web: python cryptoBotAPI.web
-worker: python cryptoBotAPI.worker
+web: python cryptoBotAPI.py
+worker: python cryptoBotAPI.py
