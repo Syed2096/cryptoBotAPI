@@ -1,2 +1,2 @@
-web: lein run -m cryptoBotAPI.web
-worker: lein run -m cryptoBotAPI.worker
+web: gunicorn cryptoBotAPI:app
+worker: gunicorn cryptoBotAPI.worker
