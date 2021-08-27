@@ -50,72 +50,72 @@ class Stock(db.Model):
     data = db.Column(db.LargeBinary(length=(2**32)-1))
 
 # Price and Predictions
-@app.route('/image1', methods=['POST'])
-@cross_origin()
-def image1(): 
-    try:
-        coin = json.loads(request.data)
-        coin = coin['coin']
-        coin = str(coin).upper() + 'USDT'
-        stock = Stock.query.filter_by(symbol=str(coin)).first()
-        stockPrices = json.loads(str(stock.prices))
-        predictedPrices = json.loads(str(stock.predictedPrices))
-        # predictedPrices = np.array(stock.predictedPrices).reshape(-1)
+# @app.route('/image1', methods=['POST'])
+# @cross_origin()
+# def image1(): 
+#     try:
+#         coin = json.loads(request.data)
+#         coin = coin['coin']
+#         coin = str(coin).upper() + 'USDT'
+#         stock = Stock.query.filter_by(symbol=str(coin)).first()
+#         stockPrices = json.loads(str(stock.prices))
+#         predictedPrices = json.loads(str(stock.predictedPrices))
+#         # predictedPrices = np.array(stock.predictedPrices).reshape(-1)
 
-        #Last 200 points
-        prices = []
-        for i in range(len(stockPrices) - predictionRequired, len(stockPrices)):
-            prices.append(stockPrices[i])
+#         #Last 200 points
+#         prices = []
+#         for i in range(len(stockPrices) - predictionRequired, len(stockPrices)):
+#             prices.append(stockPrices[i])
         
-        #First 200 points
-        predicted = []
-        if len(predictedPrices) >= predictedPoints - 1:
-            for i in range(0, len(predictedPrices) - predictAhead):
-                predicted.append(predictedPrices[i])
+#         #First 200 points
+#         predicted = []
+#         if len(predictedPrices) >= predictedPoints - 1:
+#             for i in range(0, len(predictedPrices) - predictAhead):
+#                 predicted.append(predictedPrices[i])
         
-        plt.style.use('dark_background')   
-        plt.plot(prices, color='white', label=f"Actual {stock.symbol} Price")
-        plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
-        plt.title(str(stock.symbol) + ' Price and Predictions')
-        plt.savefig(fname='plot1', transparent=True)
-        plt.clf()
-        return send_file('plot1.png')
+#         plt.style.use('dark_background')   
+#         plt.plot(prices, color='white', label=f"Actual {stock.symbol} Price")
+#         plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
+#         plt.title(str(stock.symbol) + ' Price and Predictions')
+#         plt.savefig(fname='plot1', transparent=True)
+#         plt.clf()
+#         return send_file('plot1.png')
         
-    except:
-        traceback.print_exc()
-        return Response(status=404)
+#     except:
+#         traceback.print_exc()
+#         return Response(status=404)
 
-# Prediction
-@app.route('/image2', methods=['POST'])
-@cross_origin()
-def image2(): 
+# # Prediction
+# @app.route('/image2', methods=['POST'])
+# @cross_origin()
+# def image2(): 
     
-    try:    
-        coin = json.loads(request.data)
-        coin = coin['coin']
-        coin = str(coin).upper() + 'USDT'
-        stock = Stock.query.filter_by(symbol=str(coin)).first()   
-        predictedPrices = json.loads(str(stock.predictedPrices))  
-        # predictedPrices = stock.predictedPrices
+#     try:    
+#         coin = json.loads(request.data)
+#         coin = coin['coin']
+#         coin = str(coin).upper() + 'USDT'
+#         stock = Stock.query.filter_by(symbol=str(coin)).first()   
+#         predictedPrices = json.loads(str(stock.predictedPrices))  
+#         # predictedPrices = stock.predictedPrices
 
-        #Last 60 points
-        predicted2 = []
-        if len(predictedPrices) >= predictAhead:
-            for i in range(len(predictedPrices) - predictAhead, len(predictedPrices)):
-                predicted2.append(predictedPrices[i])
+#         #Last 60 points
+#         predicted2 = []
+#         if len(predictedPrices) >= predictAhead:
+#             for i in range(len(predictedPrices) - predictAhead, len(predictedPrices)):
+#                 predicted2.append(predictedPrices[i])
         
-        else:
-            predicted2 = predictedPrices
+#         else:
+#             predicted2 = predictedPrices
 
-        plt.style.use('dark_background')   
-        plt.plot(predicted2, color='green', label=f"Predicted {stock.symbol} Price")
-        plt.title(str(stock.symbol) + ' Future Predictions')
-        plt.savefig(fname='plot2', transparent=True)
-        return send_file('plot2.png')
+#         plt.style.use('dark_background')   
+#         plt.plot(predicted2, color='green', label=f"Predicted {stock.symbol} Price")
+#         plt.title(str(stock.symbol) + ' Future Predictions')
+#         plt.savefig(fname='plot2', transparent=True)
+#         return send_file('plot2.png')
 
-    except:
-        traceback.print_exc()
-        return Response(status=404)
+#     except:
+#         traceback.print_exc()
+#         return Response(status=404)
 
 #Neural Network Settings, predictionRequired must be lower than dataPoints(Restart entire setup procedure if you change anything here, also do not change the predictedPoints)
 predictionRequired = 200
