@@ -1,1 +1,1 @@
-worker: python cryptoBotAPI.py
+web: gunicorn cryptoBotAPI:app -w 1 --threads 4
