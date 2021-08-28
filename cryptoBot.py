@@ -292,7 +292,7 @@ async def train():
                                 db.session.commit()
                             
                             except:
-                                print('No model for ' + str(stock.symbol))
+                                db.session.rollback()
 
                             test = Stock(symbol=str(stock.symbol) + 'Model.h5', data=filehandler.read(), isStock=False)
                             db.session.add(test)
