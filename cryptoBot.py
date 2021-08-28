@@ -295,44 +295,44 @@ async def train():
             traceback.print_exc()
 
 if __name__ == '__main__':
-    # try:
-    #     db.session.query(Stock).delete()
-    #     db.session.commit()
+    try:
+        db.session.query(Stock).delete()
+        db.session.commit()
     
-    # except:
-    #     print("Database Empty!")
+    except:
+        print("Database Empty!")
 
-    # try:      
-    #     num = 0
-    #     tickers = client.get_all_tickers()
-    #     for ticker in tickers:
-    #         if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
-    #             test = []
-    #             test.append(0)
-    #             stock = Stock(symbol=ticker['symbol'], isStock=True, predictedPrices=str(json.dumps(test)))
-    #             db.session.add(stock)
-    #             db.session.commit()          
-    #             num = num + 1
+    try:      
+        num = 0
+        tickers = client.get_all_tickers()
+        for ticker in tickers:
+            if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
+                test = []
+                test.append(0)
+                stock = Stock(symbol=ticker['symbol'], isStock=True, predictedPrices=str(json.dumps(test)))
+                db.session.add(stock)
+                db.session.commit()          
+                num = num + 1
 
-    #         if num == numCoins:
-    #             break
+            if num == numCoins:
+                break
         
-    #     stocks = Stock.query.all()
-    #     for stock in stocks:
-    #         try:
-    #             candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
+        stocks = Stock.query.all()
+        for stock in stocks:
+            try:
+                candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
                 
-    #             prices = []
-    #             for candle in candles:
-    #                 prices.append(float(candle[3]))
-    #                 while len(prices) > dataPoints:
-    #                     prices.pop(0)
+                prices = []
+                for candle in candles:
+                    prices.append(float(candle[3]))
+                    while len(prices) > dataPoints:
+                        prices.pop(0)
 
-    #             stock.prices = str(json.dumps(prices))    
-    #             db.session.commit() 
+                stock.prices = str(json.dumps(prices))    
+                db.session.commit() 
 
-    #         except:
-    #             print("Invalid Symbol:" + str(stock.symbol))       
+            except:
+                print("Invalid Symbol:" + str(stock.symbol))       
 
         t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
         t1.setDaemon(True)
@@ -346,6 +346,6 @@ if __name__ == '__main__':
         # print("Starting")
         app.run()
     
-    # except:
-    #     print("Start Up:")
-    #     traceback.print_exc()
+    except:
+        print("Start Up:")
+        traceback.print_exc()
