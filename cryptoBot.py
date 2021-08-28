@@ -286,8 +286,16 @@ async def train():
                         
                         #Save file to database
                         with open('model.h5', 'rb') as filehandler:
+                            try:
+                                test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
+                                db.session.delete(test)
+                                db.session.commit()
+                            
+                            except:
+                                print('No model for ' + str(stock.symbol))
+
                             test = Stock(symbol=str(stock.symbol) + 'Model.h5', data=filehandler.read(), isStock=False)
-                            db.session.merge(test)
+                            db.session.add(test)
                             db.session.commit()
                             
         except:
