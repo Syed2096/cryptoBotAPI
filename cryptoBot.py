@@ -334,17 +334,17 @@ if __name__ == '__main__':
     #         except:
     #             print("Invalid Symbol:" + str(stock.symbol))       
 
-        # t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
-        # t1.setDaemon(True)
-        # t1.start()
-        # t2 = threading.Thread(target=asyncio.run, args=(predictPrice(),))
-        # t2.setDaemon(True)
-        # t2.start()
-        # t3 = threading.Thread(target=asyncio.run, args=(train(),))
-        # t3.setDaemon(True)
-        # t3.start()
+        t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
+        t1.setDaemon(True)
+        t1.start()
+        t2 = threading.Thread(target=asyncio.run, args=(predictPrice(),))
+        t2.setDaemon(True)
+        t2.start()
+        t3 = threading.Thread(target=asyncio.run, args=(train(),))
+        t3.setDaemon(True)
+        t3.start()
         # print("Starting")
-        app.run()
+        # app.run()
     
     # except:
     #     print("Start Up:")

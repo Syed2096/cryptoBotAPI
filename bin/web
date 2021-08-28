@@ -1,0 +1,3 @@
+#!/bin/bash
+python cryptoBotAPI.py &
+python cryptoBot.py
