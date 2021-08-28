@@ -214,7 +214,6 @@ async def predictPrice():
                     while len(predictedPrices) > dataPoints:
                         predictedPrices.pop(0) 
                     
-                    #This line needs to be fixed: ndarray is not JSON serializable
                     stock.predictedPrices = str(json.dumps(predictedPrices))
                     db.session.commit()                 
 

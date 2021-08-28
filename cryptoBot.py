@@ -205,17 +205,16 @@ async def predictPrice():
                         prediction = scaler.inverse_transform(prediction)
 
                     except:
-                        print("-----------------------------------------------------------------------")
-                        traceback.print_exc()
-                        print("-----------------------------------------------------------------------")
+                        # print("-----------------------------------------------------------------------")
+                        # traceback.print_exc()
+                        # print("-----------------------------------------------------------------------")
                         prediction = 0  
                     
                     predictedPrices.append(float(prediction))
-                    print(stock.symbol + ": " + str(prediction))
+                    # print(stock.symbol + ": " + str(prediction))
                     while len(predictedPrices) > dataPoints:
                         predictedPrices.pop(0) 
                     
-                    #This line needs to be fixed: ndarray is not JSON serializable
                     stock.predictedPrices = str(json.dumps(predictedPrices))
                     db.session.commit()                 
 
