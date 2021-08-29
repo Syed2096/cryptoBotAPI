@@ -308,7 +308,7 @@ if __name__ == '__main__':
         db.session.commit()
     
     except:
-        print("Database Empty!")
+        db.session.rollback()
 
     try:      
         num = 0

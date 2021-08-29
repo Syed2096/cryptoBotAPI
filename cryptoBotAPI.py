@@ -302,6 +302,7 @@ async def train():
             traceback.print_exc()
 
 if __name__ == '__main__':
+    app.run()
     # try:
     #     db.session.query(Stock).delete()
     #     db.session.commit()
@@ -351,7 +352,7 @@ if __name__ == '__main__':
         # t3.setDaemon(True)
         # t3.start()
         # print("Starting")
-        app.run()
+        # app.run()
     
     # except:
     #     print("Start Up:")
