@@ -182,8 +182,8 @@ async def predictPrice():
                             predictedPrices = []
                         
                         #Create file from database
-                        with open('model.h5', "wb") as filehandler:
-                            test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
+                        with open('./models/' + str(stock.symbol) + 'model.h5', "wb") as filehandler:
+                            test = Stock.query.filter_by(symbol=str(stock.symbol) + 'model.h5').first()
                             filehandler.write(test.data)
                         
                         model = load_model('model.h5')
