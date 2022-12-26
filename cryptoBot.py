@@ -3,37 +3,27 @@ import config
 import pickle
 import numpy as np
 import requests
+import threading
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, LSTM
 from keras.models import load_model
 from tensorflow.python.keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
-import discord
-from discord.ext import commands
 import keras.backend as K
-import asyncio
 import datetime
 import time as t
 import scipy.stats as stats
 import cbpro
 import pandas as pd
-
-#Discord bot
-# activity = discord.Game(name="!help")
-# bot = commands.Bot(command_prefix='!', activity=activity)
-# bot.remove_command("help")
+from PIL import Image
+from time import sleep
 
 #Log into coinbase
 client = cbpro.AuthenticatedClient(config.coinbasePublic, config.coinbaseSecretKey, config.coinbasePassPhrase)
 
-#Discord bot
-activity = discord.Game(name="!help")
-bot = commands.Bot(command_prefix='!', activity=activity)
-bot.remove_command("help")
-
 #Create stocks
-class Stock:
+class Coin:
     def __init__(self, symbol):
         self.symbol = symbol
         self.alreadyHave = False
@@ -42,7 +32,8 @@ class Stock:
         self.priceBoughtAt = 0
         self.quantityBought = 0
 
-stocks = []
+#Coins
+coins = []
 
 #Neural Network Settings, predictionRequired must be lower than dataPoints(Restart entire setup procedure if you change anything here, also do not change the predictedPoints)
 predictionRequired = 100
@@ -81,7 +72,6 @@ def collectInitialData():
             historical['Date'] = pd.to_datetime(historical['Date'], unit='s')
             for i in range(len(historical)):
                 if int(str(historical.iloc[i]['Date']).split(':')[1]) % 5 == 0:
-                    # print(historical.iloc[i]['Date'], historical.iloc[i]['Close'])
                     stock.prices.insert(0, float(historical.iloc[i]['Close']))
                     count += 1
                     if count == 500:
@@ -97,19 +87,16 @@ def collectInitialData():
         pickle.dump(stocks, fh, pickle.HIGHEST_PROTOCOL)
 
 
-@bot.event
-async def on_ready():
+def on_ready():
     try:
-        global ranOnce
         if ranOnce == False:
-            ranOnce = True
             collectInitialData()
         
     except Exception as e:
         print("On Ready: " + str(e))      
 
 
-async def collectData():
+def collectData():
     while True:
         start = t.time()
         #Update prices
@@ -135,10 +122,10 @@ async def collectData():
         newRefresh = round(refreshRate - (end - start))
 
         if newRefresh > 0:
-            await asyncio.sleep(newRefresh)        
+            await sleep(newRefresh)        
 
 
-async def train():
+def train():
     while True:
         global stocks        
         for stock in stocks:
@@ -238,11 +225,10 @@ async def train():
                 result = stats.ttest_ind(a=stock.prices, b=stock.predictedPrices, equal_var=True)
                 p = result[1]
                 if p > 0.05:
-                    generalChannel = bot.get_channel(805608327538278423)
                     with open('./plots/' + str(stock.symbol) + '.png', 'rb') as fh:
                         picture = discord.File(fh)
                     await generalChannel.send(file=picture)
 
+if __name__ == '__main__':
+    on_ready()
 
-#Run discord bot
-bot.run(config.discordBot)
