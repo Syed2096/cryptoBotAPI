@@ -1,6 +1,5 @@
 #Imports
 from flask import Flask, request, send_file, Response
-from binance.client import Client
 from flask_cors.decorator import cross_origin
 from numpy.core.fromnumeric import trace
 from tensorflow.python.keras.callbacks import EarlyStopping
@@ -10,18 +9,18 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import threading
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, LSTM
 import tensorflow as tf
 from keras.models import load_model
 import keras.backend as K
-from binance.enums import *
+import cbpro
 import time as t
 import json
 import traceback
 from flask_sqlalchemy import SQLAlchemy
+import config
 
 APIKEY = os.getenv('APIKEY')
 APISECRET = os.getenv('APISECRET')
@@ -30,8 +29,8 @@ URI = os.getenv('CLEARDB_PUCE_URL')
 # physical_devices = tf.config.list_physical_devices("GPU")
 # tf.config.experimental.set_memory_growth(physical_devices[0], False)
 
-#Log into binance api
-client = Client(APIKEY, APISECRET)
+#Log into coinbase
+client = cbpro.AuthenticatedClient(config.coinbasePublic, config.coinbaseSecretKey, config.coinbasePassPhrase)
 
 #Create flask app
 app = Flask(__name__)

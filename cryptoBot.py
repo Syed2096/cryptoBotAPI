@@ -1,359 +1,248 @@
 #Imports
-from flask import Flask, request, send_file, Response
-from binance.client import Client
-from flask_cors.decorator import cross_origin
-from numpy.core.fromnumeric import trace
-from tensorflow.python.keras.callbacks import EarlyStopping
-import asyncio
-import os
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+import config
+import pickle
 import numpy as np
-import threading
+import requests
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, LSTM
-import tensorflow as tf
 from keras.models import load_model
+from tensorflow.python.keras.callbacks import EarlyStopping
+import matplotlib.pyplot as plt
+import discord
+from discord.ext import commands
 import keras.backend as K
-from binance.enums import *
+import asyncio
+import datetime
 import time as t
-import json
-import traceback
-from flask_sqlalchemy import SQLAlchemy
+import scipy.stats as stats
+import cbpro
+import pandas as pd
 
-APIKEY = os.getenv('APIKEY')
-APISECRET = os.getenv('APISECRET')
-URI = os.getenv('CLEARDB_PUCE_URL')
+#Discord bot
+# activity = discord.Game(name="!help")
+# bot = commands.Bot(command_prefix='!', activity=activity)
+# bot.remove_command("help")
 
-# physical_devices = tf.config.list_physical_devices("GPU")
-# tf.config.experimental.set_memory_growth(physical_devices[0], False)
+#Log into coinbase
+client = cbpro.AuthenticatedClient(config.coinbasePublic, config.coinbaseSecretKey, config.coinbasePassPhrase)
 
-#Log into binance api
-client = Client(APIKEY, APISECRET)
+#Discord bot
+activity = discord.Game(name="!help")
+bot = commands.Bot(command_prefix='!', activity=activity)
+bot.remove_command("help")
 
-#Create flask app
-app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = URI
-app.config['SQLALCHEMY_POOL_RECYCLE'] = 60
-# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-db = SQLAlchemy(app)
+#Create stocks
+class Stock:
+    def __init__(self, symbol):
+        self.symbol = symbol
+        self.alreadyHave = False
+        self.prices = []
+        self.predictedPrices = []
+        self.priceBoughtAt = 0
+        self.quantityBought = 0
 
-#File model
-class Stock(db.Model):
-    symbol = db.Column(db.String(50), unique=True, nullable=False, primary_key=True)
-    isStock = db.Column(db.Boolean, nullable=False)
-    prices = db.Column(db.String(10000))
-    predictedPrices = db.Column(db.String(10000))
-    data = db.Column(db.LargeBinary(length=(2**32)-1))
-
-# Price and Predictions
-@app.route('/image1', methods=['POST'])
-@cross_origin()
-def image1(): 
-    try:
-        coin = json.loads(request.data)
-        coin = coin['coin']
-        coin = str(coin).upper() + 'USDT'
-        stock = Stock.query.filter_by(symbol=str(coin)).first()
-        stockPrices = json.loads(str(stock.prices))
-        predictedPrices = json.loads(str(stock.predictedPrices))
-        # predictedPrices = np.array(stock.predictedPrices).reshape(-1)
-
-        #Last 200 points
-        prices = []
-        for i in range(len(stockPrices) - predictionRequired, len(stockPrices)):
-            prices.append(stockPrices[i])
-        
-        #First 200 points
-        predicted = []
-        if len(predictedPrices) >= predictedPoints - 1:
-            for i in range(0, len(predictedPrices) - predictAhead):
-                predicted.append(predictedPrices[i])
-        
-        plt.style.use('dark_background')   
-        plt.plot(prices, color='white', label=f"Actual {stock.symbol} Price")
-        plt.plot(predicted, color='green', label=f"Predicted {stock.symbol} Price")
-        plt.title(str(stock.symbol) + ' Price and Predictions')
-        plt.savefig(fname='plot1', transparent=True)
-        plt.clf()
-        return send_file('plot1.png')
-        
-    except:
-        traceback.print_exc()
-        return Response(status=404)
-
-# Prediction
-@app.route('/image2', methods=['POST'])
-@cross_origin()
-def image2(): 
-    
-    try:    
-        coin = json.loads(request.data)
-        coin = coin['coin']
-        coin = str(coin).upper() + 'USDT'
-        stock = Stock.query.filter_by(symbol=str(coin)).first()   
-        predictedPrices = json.loads(str(stock.predictedPrices))  
-        # predictedPrices = stock.predictedPrices
-
-        #Last 60 points
-        predicted2 = []
-        if len(predictedPrices) >= predictAhead:
-            for i in range(len(predictedPrices) - predictAhead, len(predictedPrices)):
-                predicted2.append(predictedPrices[i])
-        
-        else:
-            predicted2 = predictedPrices
-
-        plt.style.use('dark_background')   
-        plt.plot(predicted2, color='green', label=f"Predicted {stock.symbol} Price")
-        plt.title(str(stock.symbol) + ' Future Predictions')
-        plt.savefig(fname='plot2', transparent=True)
-        return send_file('plot2.png')
-
-    except:
-        traceback.print_exc()
-        return Response(status=404)
+stocks = []
 
 #Neural Network Settings, predictionRequired must be lower than dataPoints(Restart entire setup procedure if you change anything here, also do not change the predictedPoints)
-predictionRequired = 200
+predictionRequired = 100
 predictAhead = 60
 predictedPoints = predictAhead + 200
 
-#Number of data points and refresh rate in seconds, dataPoints should stay 500
+#Number of data points and refresh rate in seconds, dataPoints should stay 500, initial data is amount of data fed into training
 dataPoints = 500
 refreshRate = 300
+initialData = 400
+
+#Multiplier for trades, 1 means it will buy all it can, 0.5 means it will trade with half the money in one trade and could spend the other half on another or split it up more
+budgetTolerance = 0.25
 
 #Number of coins you want to track
-numCoins = 10
+numCoins = 100
 
-#Collect data function
+#Do not change
+ranOnce = False
+
+def collectInitialData():
+    coins = client.get_products()
+    numCoins = 100
+    for coin in coins:
+        stocks.append(Stock(coin['id']))
+        if numCoins == 100:
+            break
+
+    for stock in stocks:
+        endTime = datetime.datetime.utcnow()
+        startTime = endTime - datetime.timedelta(minutes=60 * 5)
+        count = 0
+        while True:
+            historical = pd.DataFrame(client.get_product_historic_rates(product_id=stock.symbol, start=startTime, end=endTime))
+            historical.columns= ["Date","Open","High","Low","Close","Volume"]
+            historical['Date'] = pd.to_datetime(historical['Date'], unit='s')
+            for i in range(len(historical)):
+                if int(str(historical.iloc[i]['Date']).split(':')[1]) % 5 == 0:
+                    # print(historical.iloc[i]['Date'], historical.iloc[i]['Close'])
+                    stock.prices.insert(0, float(historical.iloc[i]['Close']))
+                    count += 1
+                    if count == 500:
+                        break
+
+            if count == 500:
+                break
+            
+            endTime = startTime
+            startTime = startTime = endTime - datetime.timedelta(minutes=60 * 5)
+
+    with open('crypto.txt', 'wb') as fh:
+        pickle.dump(stocks, fh, pickle.HIGHEST_PROTOCOL)
+
+
+@bot.event
+async def on_ready():
+    try:
+        global ranOnce
+        if ranOnce == False:
+            ranOnce = True
+            collectInitialData()
+        
+    except Exception as e:
+        print("On Ready: " + str(e))      
+
+
 async def collectData():
-    await asyncio.sleep(refreshRate)
     while True:
-        try:                        
-            start = t.time()
-            stocks = Stock.query.all()
-            tickers = client.get_all_tickers()
-            #Fill information till there are enough data points
-            for stock in stocks:
-                if stock.isStock == True:
-                    prices = json.loads(str(stock.prices))
-                    # prices = stock.prices
-                    for ticker in tickers:
-                        if ticker['symbol'] == stock.symbol:
-                            prices.append(float(ticker['price']))
-                            while len(prices) > dataPoints:
-                                prices.pop(0)
-                            break
-                
-                    stock.prices = str(json.dumps(prices))
-                    db.session.commit()
+        start = t.time()
+        #Update prices
+        for stock in stocks:
+            price = None
+            while price == None:
+                try:
+                    price = requests.get('https://api.pro.coinbase.com/products/' + stock.symbol + '/ticker').json()
+                    price = price['price']
+                except:
+                    pass               
+            stock.prices.append(price)
+            while len(stock.prices) > dataPoints:
+                stock.prices.pop(0)
 
-            end = t.time()                              
-            newRefresh = round(refreshRate - (end - start))
-            
-            if newRefresh > 0:
-                await asyncio.sleep(newRefresh)
-            
-        except:
-            print("Collect Data:")
-            traceback.print_exc()
+        #Write information into file
+        with open("crypto.txt", "wb") as filehandler:
+            pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
+        
+        end = t.time()
 
-async def predictPrice():
-    while True: 
-        try: 
-            start = t.time()  
-            stocks = Stock.query.all()
-            for stock in stocks:
-                K.clear_session()
-                # prices = stock.prices
-                # predictedPrices = stock.predictedPrices
-                if stock.isStock == True:
-                    try:   
-                        prices = json.loads(str(stock.prices))
+        #Get wait time
+        newRefresh = round(refreshRate - (end - start))
 
-                        try:
-                            predictedPrices = json.loads(str(stock.predictedPrices))
-                    
-                        except:
-                            predictedPrices = []
-                        
-                        #Create file from database
-                        with open('./models/' + str(stock.symbol) + 'model.h5', "wb") as filehandler:
-                            test = Stock.query.filter_by(symbol=str(stock.symbol) + 'model.h5').first()
-                            filehandler.write(test.data)
-                        
-                        model = load_model('model.h5')
+        if newRefresh > 0:
+            await asyncio.sleep(newRefresh)        
 
-                        scaler = MinMaxScaler(feature_range=(0, 1))
-                        prices = np.array(prices).reshape(-1, 1)
-                        scaler = scaler.fit(prices)
-                        total_dataset = prices
-
-                        model_inputs = np.array(total_dataset[len(total_dataset) - predictionRequired:]).reshape(-1, 1)
-                        model_inputs = scaler.transform(model_inputs)
-
-                        #Predict Next period
-                        real_data = [model_inputs[len(model_inputs) - predictionRequired:len(model_inputs), 0]]
-                        real_data = np.array(real_data)
-                        real_data = np.reshape(real_data, (real_data.shape[0], real_data.shape[1], 1))
-
-                        prediction = model.predict(real_data)
-                        prediction = scaler.inverse_transform(prediction)
-
-                    except:
-                        # print("-----------------------------------------------------------------------")
-                        # traceback.print_exc()
-                        # print("-----------------------------------------------------------------------")
-                        prediction = 0  
-                    
-                    predictedPrices.append(float(prediction))
-                    # print(stock.symbol + ": " + str(prediction))
-                    while len(predictedPrices) > dataPoints:
-                        predictedPrices.pop(0) 
-                    
-                    stock.predictedPrices = str(json.dumps(predictedPrices))
-                    db.session.commit()                 
-
-            end = t.time()                                                
-            newRefresh = round(refreshRate - (end - start))
-            
-            if newRefresh > 0:
-                await asyncio.sleep(newRefresh)
-
-        except:
-            print("Predict Price:")
-            traceback.print_exc()
 
 async def train():
     while True:
-        try:
-            stocks = Stock.query.all()
-            for stock in stocks:
-                K.clear_session()
-                if stock.isStock == True:
-                    prices = json.loads(str(stock.prices))
-                # prices = stock.prices
-                    if len(prices) == 500:
-                        
-                        #Prepare data using first 400 points
-                        scaler = MinMaxScaler(feature_range=(0, 1))
-                        trainPrices = np.array(prices)
-                        scaled_data = scaler.fit_transform(trainPrices.reshape(-1, 1))
-
-                        x_train = []
-                        y_train = []
-
-                        for x in range(predictionRequired, len(scaled_data) - predictAhead):
-                            x_train.append(scaled_data[x - predictionRequired:x, 0])
-                            y_train.append(scaled_data[x + predictAhead, 0])
-
-                        x_train, y_train = np.array(x_train), np.array(y_train)
-                        x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
-                            
-                        try:
-                            
-                            #Create file from database
-                            with open('model.h5', "wb") as filehandler:
-                                test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
-                                filehandler.write(test.data)
-
-                            model = load_model('model.h5')
-
-                        except:    
-                            #Build model
-                            model = Sequential()
-
-                            #Experiment with layers, more layers longer time to train
-                            model.add(LSTM(units=50, return_sequences=True, input_shape=(x_train.shape[1], 1)))
-                            model.add(Dropout(0.2))
-                            model.add(LSTM(units=50, return_sequences=True))
-                            model.add(Dropout(0.2))
-                            model.add(LSTM(units=50))
-                            model.add(Dropout(0.2))
-                            model.add(Dense(units=1)) #Prediction of next closing value
-
-                            model.compile(optimizer='adam', loss='mean_squared_error')
-                            #Epoch = how many times model sees data, batchsize = how many units it sees at once
-
-                        callbacks = [EarlyStopping(monitor='val_loss', patience=100)]          
-                        model.fit(x_train, y_train, epochs=1000, validation_split=0.2, callbacks=callbacks)
-                        # model.fit(x_train, y_train, epochs=1000)
-                        model.save('model.h5')
-                        
-                        #Save file to database
-                        with open('model.h5', 'rb') as filehandler:
-                            try:
-                                test = Stock.query.filter_by(symbol=str(stock.symbol) + 'Model.h5').first()
-                                db.session.delete(test)
-                                db.session.commit()
-                            
-                            except:
-                                db.session.rollback()
-
-                            test = Stock(symbol=str(stock.symbol) + 'Model.h5', data=filehandler.read(), isStock=False)
-                            db.session.add(test)
-                            db.session.commit()
-                            
-        except:
-            print("Train:")
-            traceback.print_exc()
-
-if __name__ == '__main__':
-    try:
-        db.session.query(Stock).delete()
-        db.session.commit()
-    
-    except:
-        db.session.rollback()
-
-    try:      
-        num = 0
-        tickers = client.get_all_tickers()
-        for ticker in tickers:
-            if ticker['symbol'].find('UP') == -1 and ticker['symbol'].find('DOWN') == -1 and ticker['symbol'].endswith('USDT') == True:
-                test = []
-                test.append(0)
-                stock = Stock(symbol=ticker['symbol'], isStock=True, predictedPrices=str(json.dumps(test)))
-                db.session.add(stock)
-                db.session.commit()          
-                num = num + 1
-
-            if num == numCoins:
-                break
-        
-        stocks = Stock.query.all()
+        global stocks        
         for stock in stocks:
-            try:
-                candles = client.get_klines(symbol=stock.symbol, interval=Client.KLINE_INTERVAL_5MINUTE)
-                
+            K.clear_session()
+            if len(stock.prices) == dataPoints:
+                fileName = "./models/" + str(stock.symbol) + "model.h5"
+                #Prices used to train and predict next points
                 prices = []
-                for candle in candles:
-                    prices.append(float(candle[3]))
-                    while len(prices) > dataPoints:
-                        prices.pop(0)
+                for i in range(initialData):
+                    prices.append(stock.prices[i])
 
-                stock.prices = str(json.dumps(prices))    
-                db.session.commit() 
+                #Prepare data using first 400 points
+                scaler = MinMaxScaler(feature_range=(0, 1))
+                trainPrices = np.array(prices)
+                scaled_data = scaler.fit_transform(trainPrices.reshape(-1, 1))
 
-            except:
-                print("Invalid Symbol:" + str(stock.symbol))       
+                x_train = []
+                y_train = []
 
-        t1 = threading.Thread(target=asyncio.run, args=(collectData(),))
-        t1.setDaemon(True)
-        t1.start()
-        t2 = threading.Thread(target=asyncio.run, args=(predictPrice(),))
-        t2.setDaemon(True)
-        t2.start()
-        t3 = threading.Thread(target=asyncio.run, args=(train(),))
-        t3.setDaemon(True)
-        t3.start()
-        # print("Starting")
-        app.run()
-    
-    except:
-        print("Start Up:")
-        traceback.print_exc()
+                for x in range(predictionRequired, len(scaled_data) - predictAhead):
+                    x_train.append(scaled_data[x - predictionRequired:x, 0])
+                    y_train.append(scaled_data[x + predictAhead, 0])
+
+                x_train, y_train = np.array(x_train), np.array(y_train)
+                x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+                    
+                try:
+                    model = load_model(fileName)
+
+                except:    
+                    #Build model
+                    model = Sequential()
+
+                    #Experiment with layers, more layers longer time to train
+                    model.add(LSTM(units=50, return_sequences=True, input_shape=(x_train.shape[1], 1)))
+                    model.add(Dropout(0.2))
+                    model.add(LSTM(units=50, return_sequences=True))
+                    model.add(Dropout(0.2))
+                    model.add(LSTM(units=50))
+                    model.add(Dropout(0.2))
+                    model.add(Dense(units=1)) #Prediction of next closing value
+
+                    model.compile(optimizer='adam', loss='mean_squared_error')
+                    #Epoch = how many times model sees data, batchsize = how many units it sees at once
+
+                callbacks = [EarlyStopping(monitor='val_loss', patience=100)]          
+                model.fit(x_train, y_train, epochs=1000, validation_split=0.2, callbacks=callbacks)
+                # model.fit(x_train, y_train, epochs=1000)
+                model.save(fileName)
+                
+                #Get prices to predict data
+                prices = []
+                for i in range(0, initialData - predictAhead):
+                    prices.append(stock.prices[i])
+
+                #Get predicted prices for points 400 - 500
+                for i in range(initialData - predictAhead + 1, dataPoints - predictAhead):
+                    scaler = MinMaxScaler(feature_range=(0, 1))
+                    predictPrices = np.array(prices).reshape(-1, 1)
+                    scaler = scaler.fit(predictPrices)
+                    total_dataset = predictPrices
+
+                    model_inputs = np.array(total_dataset[len(total_dataset) - predictionRequired:]).reshape(-1, 1)
+                    model_inputs = scaler.transform(model_inputs)
+
+                    #Predict Next period
+                    real_data = [model_inputs[len(model_inputs) - predictionRequired:len(model_inputs), 0]]
+                    real_data = np.array(real_data)
+                    real_data = np.reshape(real_data, (real_data.shape[0], real_data.shape[1], 1))
+
+                    prediction = model.predict(real_data)
+                    prediction = scaler.inverse_transform(prediction)
+                    stock.predictedPrices.append(prediction)
+                    prices.append(stock.prices[i])
+                
+                while len(stock.predictedPrices) > dataPoints:
+                    stock.predictedPrices.pop(0)
+
+                #Get actual prices for stocks used for result
+                actualPrices = []
+                for i in range(initialData, dataPoints):
+                    actualPrices.append(float(stock.prices[i]))
+                
+                actualPrices = np.reshape(actualPrices, -1)
+
+                predictedPrices = stock.predictedPrices
+                predictedPrices = np.reshape(predictedPrices, -1)
+                
+                plt.style.use('dark_background')   
+                plt.plot(actualPrices, color='white')
+                plt.plot(predictedPrices, color='green')
+                plt.title(str(stock.symbol))
+                plt.savefig("./plots/" + str(stock.symbol) + ".png", transparent=True)
+                plt.clf()
+                stock.newPredictions = True
+                
+                result = stats.ttest_ind(a=stock.prices, b=stock.predictedPrices, equal_var=True)
+                p = result[1]
+                if p > 0.05:
+                    generalChannel = bot.get_channel(805608327538278423)
+                    with open('./plots/' + str(stock.symbol) + '.png', 'rb') as fh:
+                        picture = discord.File(fh)
+                    await generalChannel.send(file=picture)
+
+
+#Run discord bot
+bot.run(config.discordBot)
