@@ -22,7 +22,7 @@ from time import sleep
 #Log into coinbase
 client = cbpro.AuthenticatedClient(config.coinbasePublic, config.coinbaseSecretKey, config.coinbasePassPhrase)
 
-#Create stocks
+#Create coins
 class Coin:
     def __init__(self, symbol):
         self.symbol = symbol
@@ -58,21 +58,21 @@ def collectInitialData():
     coins = client.get_products()
     numCoins = 100
     for coin in coins:
-        stocks.append(Stock(coin['id']))
+        coins.append(Coin(coin['id']))
         if numCoins == 100:
             break
 
-    for stock in stocks:
+    for coin in coins:
         endTime = datetime.datetime.utcnow()
         startTime = endTime - datetime.timedelta(minutes=60 * 5)
         count = 0
         while True:
-            historical = pd.DataFrame(client.get_product_historic_rates(product_id=stock.symbol, start=startTime, end=endTime))
+            historical = pd.DataFrame(client.get_product_historic_rates(product_id=coin.symbol, start=startTime, end=endTime))
             historical.columns= ["Date","Open","High","Low","Close","Volume"]
             historical['Date'] = pd.to_datetime(historical['Date'], unit='s')
             for i in range(len(historical)):
                 if int(str(historical.iloc[i]['Date']).split(':')[1]) % 5 == 0:
-                    stock.prices.insert(0, float(historical.iloc[i]['Close']))
+                    coin.prices.insert(0, float(historical.iloc[i]['Close']))
                     count += 1
                     if count == 500:
                         break
@@ -84,7 +84,7 @@ def collectInitialData():
             startTime = startTime = endTime - datetime.timedelta(minutes=60 * 5)
 
     with open('crypto.txt', 'wb') as fh:
-        pickle.dump(stocks, fh, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(coins, fh, pickle.HIGHEST_PROTOCOL)
 
 
 def on_ready():
@@ -100,21 +100,21 @@ def collectData():
     while True:
         start = t.time()
         #Update prices
-        for stock in stocks:
+        for coin in coins:
             price = None
             while price == None:
                 try:
-                    price = requests.get('https://api.pro.coinbase.com/products/' + stock.symbol + '/ticker').json()
+                    price = requests.get('https://api.pro.coinbase.com/products/' + coin.symbol + '/ticker').json()
                     price = price['price']
                 except:
                     pass               
-            stock.prices.append(price)
-            while len(stock.prices) > dataPoints:
-                stock.prices.pop(0)
+            coin.prices.append(price)
+            while len(coin.prices) > dataPoints:
+                coins.prices.pop(0)
 
         #Write information into file
         with open("crypto.txt", "wb") as filehandler:
-            pickle.dump(stocks, filehandler, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(coins, filehandler, pickle.HIGHEST_PROTOCOL)
         
         end = t.time()
 
@@ -127,15 +127,15 @@ def collectData():
 
 def train():
     while True:
-        global stocks        
-        for stock in stocks:
+        global coins        
+        for coin in coins:
             K.clear_session()
-            if len(stock.prices) == dataPoints:
-                fileName = "./models/" + str(stock.symbol) + "model.h5"
+            if len(coin.prices) == dataPoints:
+                fileName = "./models/" + str(coin.symbol) + "model.h5"
                 #Prices used to train and predict next points
                 prices = []
                 for i in range(initialData):
-                    prices.append(stock.prices[i])
+                    prices.append(coin.prices[i])
 
                 #Prepare data using first 400 points
                 scaler = MinMaxScaler(feature_range=(0, 1))
@@ -179,7 +179,7 @@ def train():
                 #Get prices to predict data
                 prices = []
                 for i in range(0, initialData - predictAhead):
-                    prices.append(stock.prices[i])
+                    prices.append(coin.prices[i])
 
                 #Get predicted prices for points 400 - 500
                 for i in range(initialData - predictAhead + 1, dataPoints - predictAhead):
@@ -198,37 +198,44 @@ def train():
 
                     prediction = model.predict(real_data)
                     prediction = scaler.inverse_transform(prediction)
-                    stock.predictedPrices.append(prediction)
-                    prices.append(stock.prices[i])
+                    coin.predictedPrices.append(prediction)
+                    prices.append(coin.prices[i])
                 
-                while len(stock.predictedPrices) > dataPoints:
-                    stock.predictedPrices.pop(0)
+                while len(coin.predictedPrices) > dataPoints:
+                    coin.predictedPrices.pop(0)
 
-                #Get actual prices for stocks used for result
+                #Get actual prices for coins used for result
                 actualPrices = []
                 for i in range(initialData, dataPoints):
-                    actualPrices.append(float(stock.prices[i]))
+                    actualPrices.append(float(coin.prices[i]))
                 
                 actualPrices = np.reshape(actualPrices, -1)
 
-                predictedPrices = stock.predictedPrices
+                predictedPrices = coin.predictedPrices
                 predictedPrices = np.reshape(predictedPrices, -1)
                 
                 plt.style.use('dark_background')   
                 plt.plot(actualPrices, color='white')
                 plt.plot(predictedPrices, color='green')
-                plt.title(str(stock.symbol))
-                plt.savefig("./plots/" + str(stock.symbol) + ".png", transparent=True)
+                plt.title(str(coin.symbol))
+                plt.savefig("./plots/" + str(coin.symbol) + ".png", transparent=True)
                 plt.clf()
-                stock.newPredictions = True
+                coin.newPredictions = True
                 
-                result = stats.ttest_ind(a=stock.prices, b=stock.predictedPrices, equal_var=True)
+                result = stats.ttest_ind(a=coin.prices, b=coin.predictedPrices, equal_var=True)
                 p = result[1]
                 if p > 0.05:
-                    with open('./plots/' + str(stock.symbol) + '.png', 'rb') as fh:
+                    with open('./plots/' + str(coin.symbol) + '.png', 'rb') as fh:
                         picture = discord.File(fh)
                     await generalChannel.send(file=picture)
 
 if __name__ == '__main__':
     on_ready()
+
+    t1 = threading.Thread(target=train)
+    t1.start()
+
+
+
+    t2 = threading.Thread()
 
